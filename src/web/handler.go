@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/google/uuid"
 )
 
 // обработчик с использованием net/http, используя следующий метод:
@@ -62,9 +64,13 @@ func (h *GameHandler) GetGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Game ID is required", http.StatusBadRequest)
 		return
 	}
-
-	// ctx := r.Context()
-	game, err := h.gameService.Repo.GetByID(gameID)
+	id, err := uuid.Parse(gameID)
+	if err != nil {
+		http.Error(w, "Game ID is required", http.StatusBadRequest)
+		return
+	}
+	ctx := r.Context()
+	game, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Game not found: %v", err), http.StatusNotFound)
 		return
@@ -116,6 +122,7 @@ func (h *GameHandler) gameToResponse(game *domain.CurrentGame) *GameResponse {
 
 // обрабатывает ход пользователя и выполняет ответный ход компьютера. POST /game/{id}
 func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -132,8 +139,13 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
-
-	currentGame, err := h.gameService.Repo.GetByID(gameID)
+	ctx := r.Context()
+	id, err := uuid.Parse(gameID)
+	if err != nil {
+		http.Error(w, "Game ID is required", http.StatusBadRequest)
+		return
+	}
+	currentGame, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Game not found: %v", err), http.StatusNotFound)
 		return
@@ -187,19 +199,19 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	row, col, err := h.gameService.GetBestMove(gameID)
+	row, col, err := h.gameService.GetBestMove(ctx, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to compute computer move: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.gameService.MakeMove(gameID, row, col)
+	err = h.gameService.MakeMove(ctx, id, row, col)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	updatedGame, err := h.gameService.Repo.GetByID(gameID)
+	updatedGame, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to load updated game: %v", err), http.StatusInternalServerError)
 		return

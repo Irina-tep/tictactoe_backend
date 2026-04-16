@@ -166,7 +166,7 @@ curl http://localhost:8080/game/{game_id}
 
 ### Выполнение хода:
 ```bash
-curl -X POST http://localhost:8080/game/cfe776d6-744a-4fe0-bd53-2ef0ca2421e3 \
+curl -X POST http://localhost:8080/game/23df4532-3998-465d-93a3-d45603b52108 \
   -H "Content-Type: application/json" \
   -d '{"field":[[0,0,0],[0,1,0],[0,0,0]]}'
 ```

@@ -19,8 +19,38 @@ import (
 )
 
 // создает экземпляр хранилища (синглтон).
-func NewStorage() *datasource.Storage {
-	return datasource.NewStorage()
+func NewStorage(lc fx.Lifecycle) *datasource.Storage {
+	ctx := context.Background()
+
+	// Строка подключения к PostgreSQL
+	// postgresql://ИмяПользователя:Пароль@Хост:Порт/ИмяБазыДанных
+	dbURL := "postgresql://tictacuser:password@localhost:5432/tictactoe"
+
+	storage, err := datasource.NewStorage(ctx, dbURL)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create storage: %v", err))
+	}
+
+	// Создаем таблицу, если её нет
+	_, err = storage.DB().Exec(ctx, `CREATE TABLE IF NOT EXISTS games (
+		id UUID PRIMARY KEY,
+		field JSONB NOT NULL,
+		created_at TIMESTAMP NOT NULL,
+		updated_at TIMESTAMP NOT NULL
+	)`)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create table: %v", err))
+	}
+
+	// Добавляем хук для закрытия хранилища при остановке приложения
+	lc.Append(fx.Hook{
+		OnStop: func(ctx context.Context) error {
+			storage.Close()
+			return nil
+		},
+	})
+
+	return storage
 }
 
 // создает репозиторий для работы с играми. Принимает хранилище, возвращает интерфейс GameRepository.

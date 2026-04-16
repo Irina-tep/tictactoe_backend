@@ -35,6 +35,7 @@ func (m *Mapper) ToData(game *domain.CurrentGame) (*GameStorage, error) {
 			ID:    game.ID,
 			Field: game.CurrentField.Field,
 		},
-		Timestamp: time.Now(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}, nil
 }

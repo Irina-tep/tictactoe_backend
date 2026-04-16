@@ -2,7 +2,10 @@
 package datasource
 
 import (
+	"context"
 	"domain"
+
+	"github.com/google/uuid"
 )
 
 type GameService struct {
@@ -29,8 +32,8 @@ func (gs *GameService) CheckFinish(currentGame domain.CurrentGame) (int, int, bo
 	return gs.appService.CheckFinish(currentGame)
 }
 
-func (gs *GameService) MakeMove(gameID string, row, col int) error {
-	game, err := gs.Repo.GetByID(gameID)
+func (gs *GameService) MakeMove(ctx context.Context, gameID uuid.UUID, row, col int) error {
+	game, err := gs.Repo.GetByID(ctx, gameID)
 	if err != nil {
 		return err
 	}
@@ -45,8 +48,8 @@ func (gs *GameService) MakeMove(gameID string, row, col int) error {
 }
 
 // возвращает лучший ход для указанной игры
-func (gs *GameService) GetBestMove(gameID string) (int, int, error) {
-	game, err := gs.Repo.GetByID(gameID)
+func (gs *GameService) GetBestMove(ctx context.Context, gameID uuid.UUID) (int, int, error) {
+	game, err := gs.Repo.GetByID(ctx, gameID)
 	if err != nil {
 		return -1, -1, err
 	}

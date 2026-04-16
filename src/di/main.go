@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
+	
 	app := fx.New(
-		// Регистрируем все конструкторы
 		fx.Provide(
 			NewStorage,
 			NewGameRepo,

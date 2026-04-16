@@ -1,13 +1,16 @@
 package datasource
 
 import (
+	"context"
 	"domain"
+
+	"github.com/google/uuid"
 )
 
 // интерфейс репозитория для работы с играми
 type GameRepository interface {
 	Save(game *domain.CurrentGame) error
-	GetByID(gameID string) (*domain.CurrentGame, error)
+	GetByID(ctx context.Context, gameID uuid.UUID) (*domain.CurrentGame, error)
 }
 
 type GameRepositoryStruct struct {
@@ -23,6 +26,7 @@ func NewGameRepositoryStruct(s *Storage) *GameRepositoryStruct {
 }
 
 func (r *GameRepositoryStruct) Save(game *domain.CurrentGame) error {
+	ctx := context.Background()
 	if game == nil {
 		return ErrGameIsNil
 	}
@@ -30,16 +34,16 @@ func (r *GameRepositoryStruct) Save(game *domain.CurrentGame) error {
 	if err != nil {
 		return err
 	}
-	r.storage.SaveGame(game.ID.String(), gameData)
+	r.storage.SaveGame(ctx, game.ID, gameData)
 	return nil
 }
 
-func (r *GameRepositoryStruct) GetByID(gameID string) (*domain.CurrentGame, error) {
-	if gameID == "" {
+func (r *GameRepositoryStruct) GetByID(ctx context.Context, gameID uuid.UUID) (*domain.CurrentGame, error) {
+	if gameID == uuid.Nil {
 		return nil, ErrGameIDIsEmpty
 	}
-	gameData, ok := r.storage.GetGame(gameID)
-	if !ok {
+	gameData, err := r.storage.GetGame(ctx, gameID)
+	if err != nil {
 		return nil, ErrGameIDNotFound
 	}
 	return r.mapper.ToDomain(gameData)
