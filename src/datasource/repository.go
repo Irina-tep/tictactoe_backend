@@ -48,3 +48,4 @@ func (r *GameRepositoryStruct) GetByID(ctx context.Context, gameID uuid.UUID) (*
 	}
 	return r.mapper.ToDomain(gameData)
 }
+

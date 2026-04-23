@@ -20,14 +20,9 @@ type GameStorage struct {
 	UpdatedAt time.Time
 }
 
-// // Для хранения данных используйте потокобезопасные коллекции (например, sync.Map?)
-// type Storage struct {
-// 	m sync.Map // map[string]*GameData
-// }
 
 type Storage struct {
 	db *pgxpool.Pool /// Пул соединений (потокобезопасный)
-	// db *sql.DB
 }
 
 // Конструктор с подключением к БД
@@ -120,3 +115,5 @@ func (s *Storage) GetGame(ctx context.Context, gameID uuid.UUID) (*GameStorage, 
 	}
 	return game, nil
 }
+
+

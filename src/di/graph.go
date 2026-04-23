@@ -31,7 +31,7 @@ func NewStorage(lc fx.Lifecycle) *datasource.Storage {
 		panic(fmt.Sprintf("Failed to create storage: %v", err))
 	}
 
-	// Создаем таблицу, если её нет
+	// Создаем таблицу games, если её нет
 	_, err = storage.DB().Exec(ctx, `CREATE TABLE IF NOT EXISTS games (
 		id UUID PRIMARY KEY,
 		field JSONB NOT NULL,
@@ -39,7 +39,19 @@ func NewStorage(lc fx.Lifecycle) *datasource.Storage {
 		updated_at TIMESTAMP NOT NULL
 	)`)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create table: %v", err))
+		panic(fmt.Sprintf("Failed to create games table: %v", err))
+	}
+
+	// Создаем таблицу player, если её нет
+	_, err = storage.DB().Exec(ctx, `CREATE TABLE IF NOT EXISTS player (
+		id UUID PRIMARY KEY,
+		login VARCHAR(255) UNIQUE NOT NULL,
+		password VARCHAR(255) NOT NULL,
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create player table: %v", err))
 	}
 
 	// Добавляем хук для закрытия хранилища при остановке приложения
@@ -63,9 +75,19 @@ func NewGameService(repo datasource.GameRepository) *datasource.GameService {
 	return datasource.NewGameService(repo)
 }
 
+// создает репозиторий для работы с пользователями. Принимает хранилище, возвращает интерфейс A.
+func NewUserRepo(storage *datasource.Storage) datasource.UserRepository {
+	return datasource.NewUserRepositoryStruct(storage)
+}
+
+// создает сервис для работы с пользователями.
+func NewUserService(repo datasource.UserRepository) *datasource.AuthorizationService {
+	return datasource.NewAutorizationService(repo)
+}
+
 // создает HTTP маршрутизатор.
-func NewRouter(gameService *datasource.GameService) http.Handler {
-	return web.NewRouter(gameService)
+func NewRouter(gameService *datasource.GameService, userService *datasource.AuthorizationService) http.Handler {
+	return web.NewRouter(gameService, userService)
 }
 
 // NewHTTPServer создает и настраивает HTTP сервер.
@@ -86,9 +108,11 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 				fmt.Println("Запуск API сервера для игры Крестики-Нолики")
 				fmt.Println("Сервер запущен на http://localhost:8080")
 				fmt.Println("Доступные эндпоинты:")
-				fmt.Println("  POST   /game        - создать новую игру")
-				fmt.Println("  GET    /game/{id}   - получить состояние игры")
-				fmt.Println("  POST   /game/{id}   - сделать ход и получить ответ компьютера")
+				fmt.Println("  POST   /auth/signup   - регистрация пользователя (без авторизации)")
+				fmt.Println("  POST   /auth/login    - авторизация пользователя (без авторизации)")
+				fmt.Println("  POST   /game          - создать новую игру (требуется авторизация)")
+				fmt.Println("  GET    /game/{id}     - получить состояние игры (требуется авторизация)")
+				fmt.Println("  POST   /game/{id}     - сделать ход (требуется авторизация)")
 
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					log.Printf("Ошибка сервера: %v\n", err)
@@ -101,6 +125,5 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 			return server.Shutdown(ctx)
 		},
 	})
-
 	return server
 }

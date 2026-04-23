@@ -2,20 +2,28 @@ package web
 
 // Приложение должно поддерживать одновременную игру в несколько игр .
 import (
+	"context"
 	"datasource"
 	"domain"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 )
+
+// Ключ для хранения UserID в контексте запроса
+type contextKey string
+
+const userIDKey contextKey = "userID"
 
 // обработчик с использованием net/http, используя следующий метод:
 // POST /game/{current_game_UUID} — отправляет текущую игру с обновленным игровым полем пользователя и возвращает текущую игру с обновленным игровым полем компьютера.
 
 type GameHandler struct {
 	gameService *datasource.GameService
+	userService *datasource.AuthorizationService
 }
 
 // Если отправлена ​​некорректная игра с неправильно обновленной доской, необходимо вернуть сообщение об ошибке с описанием .
@@ -28,6 +36,35 @@ func (h *GameHandler) sendError(w http.ResponseWriter, message string, code int)
 		Code:  code,
 	}
 	json.NewEncoder(w).Encode(errResp) //Кодирует структуру в JSON и сразу записывает в w
+}
+
+// UserAuthenticator создает middleware, который проверяет авторизацию пользователя.
+// Возвращает обёрнутый http.Handler, который проверяет заголовок Authorization
+// и добавляет UserID в контекст запроса.
+func (h *GameHandler) UserAuthenticator(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			h.sendError(w, "Authorization header is required", http.StatusUnauthorized)
+			return
+		}
+
+		userID, err := h.userService.Authenticate(authHeader)
+		if err != nil {
+			h.sendError(w, "Authentication failed: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		// Добавляем UserID в контекст запроса
+		ctx := context.WithValue(r.Context(), userIDKey, userID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// GetUserIDFromContext извлекает UserID из контекста запроса.
+func GetUserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	userID, ok := ctx.Value(userIDKey).(uuid.UUID)
+	return userID, ok
 }
 
 // создает новую игру. POST /game
@@ -245,22 +282,72 @@ func (h *GameHandler) compareFieldsDetailed(field1, field2 [3][3]int) (int, int,
 	return diffCount, firstRow, firstCol, firstOldVal, firstNewVal
 }
 
-// // определяет, чей сейчас ход.
-// func (h *GameHandler) getCurrentPlayer(field *domain.GameField) int {
-// 	countX := 0
-// 	countO := 0
-// 	for i := 0; i < 3; i++ {
-// 		for j := 0; j < 3; j++ {
-// 			if field.Fild[i][j] == application.PlayerX {
-// 				countX++
-// 			} else if field.Fild[i][j] == application.PlayerO {
-// 				countO++
-// 			}
-// 		}
-// 	}
+// Обработчик регистрации пользователя
+func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req SignUpRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.sendError(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
 
-// 	if countX <= countO {
-// 		return application.PlayerX
-// 	}
-// 	return application.PlayerO
-// }
+	// Валидация логина и пароля
+	req.Login = strings.TrimSpace(req.Login)
+	req.Password = strings.TrimSpace(req.Password)
+
+	if req.Login == "" || req.Password == "" {
+		h.sendError(w, "Login and password are required", http.StatusBadRequest)
+		return
+	}
+
+	// Вызываем сервис регистрации
+	success, err := h.userService.Registration(req.Login, req.Password)
+	if err != nil {
+		status := http.StatusInternalServerError
+		// Если ошибка валидации — возвращаем 400
+		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
+			status = http.StatusBadRequest
+		}
+		h.sendError(w, err.Error(), status)
+		return
+	}
+	response := SignUpResponse{
+		Success: success,
+		Message: "User registered successfully",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+// Обработчик аутентификации
+func (h *GameHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// получить значение заголовка с именем Authorization
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		h.sendError(w, "Authorization header is required", http.StatusUnauthorized)
+		return
+	}
+	// Аутентифицируем пользователя
+	userID, err := h.userService.Authenticate(authHeader)
+	if err != nil {
+		h.sendError(w, "Authentication failed: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+	response := AuthResponse{
+		Success: true,
+		UserID:  userID.String(),
+		Token:   authHeader,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}

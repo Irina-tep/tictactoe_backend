@@ -20,6 +20,8 @@ func NewGameService(repo GameRepository) *GameService {
 	}
 }
 
+
+
 func (gs *GameService) NextTurn(currentGame domain.CurrentGame) (int, int, error) {
 	return gs.appService.NextTurn(currentGame)
 }

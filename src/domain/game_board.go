@@ -4,25 +4,6 @@ type GameField struct {
 	Field [3][3]int
 }
 
-// func NewGameField() GameField {
-// 	Field := GameField{
-// 		Field: make([][]int, 3),
-// 	}
-// 	for x := 0; x < 3; x++ {
-// 		Field.Field[x] = make([]int, 3)
-// 	}
-// 	return Field
-// }
-
-// // создает глубокую копию игрового поля
-// func (g GameField) Copy() GameField {
-// 	newField := make([][]int, 3)
-// 	for i := range g.Field {
-// 		newField[i] = make([]int, 3)
-// 		copy(newField[i], g.Field[i])
-// 	}
-// 	return GameField{Field: newField}
-// }
 
 // возвращает список координат пустых клеток
 func (g GameField) GetEmptyCells() [][2]int {

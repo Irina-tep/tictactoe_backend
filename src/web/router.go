@@ -6,14 +6,23 @@ import (
 )
 
 // создает маршрутизатор для API игры.
-func NewRouter(gameService *datasource.GameService) http.Handler {
-	handler := &GameHandler{gameService: gameService} //создает обработчик игры (GameHandler) с сервисом для работы с данными
+func NewRouter(gameService *datasource.GameService, userService *datasource.AuthorizationService) http.Handler {
+	handler := &GameHandler{gameService: gameService, userService: userService} //создает обработчик игры (GameHandler) с сервисом для работы с данными и с пользователем
+
+	// Создаём middleware для проверки авторизации
+	authMiddleware := handler.UserAuthenticator
+
 	// Маршрутизатор http.ServeMux — это "диспетчер", который: принимает входящий HTTP-запрос (метод + URL), сравнивает его с зарегистрированными маршрутами, направляет запрос к нужной функции-обработчику
 	mux := http.NewServeMux()
-	//Настраивает маршруты — связывает URL-пути с конкретными функциями-обработчиками
-	mux.HandleFunc("POST /game", handler.CreateGame)
-	mux.HandleFunc("GET /game/{id}", handler.GetGame)
-	mux.HandleFunc("POST /game/{id}", handler.UpdateGame)
+
+	// Публичные endpoint'ы (без авторизации)
+	mux.HandleFunc("POST /auth/signup", handler.SignUp)
+	mux.HandleFunc("POST /auth/login", handler.Authenticate)
+
+	// Защищённые endpoint'ы (требуют авторизацию)
+	mux.Handle("POST /game", authMiddleware(http.HandlerFunc(handler.CreateGame)))
+	mux.Handle("GET /game/{id}", authMiddleware(http.HandlerFunc(handler.GetGame)))
+	mux.Handle("POST /game/{id}", authMiddleware(http.HandlerFunc(handler.UpdateGame)))
 
 	return mux //Возвращает готовый маршрутизатор, который можно использовать в HTTP-сервере
 }

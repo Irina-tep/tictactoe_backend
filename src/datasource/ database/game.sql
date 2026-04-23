@@ -17,3 +17,15 @@ CREATE TABLE IF NOT EXISTS games (
 
 -- Индекс для быстрого поиска активных игр
 --CREATE INDEX idx_games_status ON games(status);
+
+--таблица игроков
+CREATE TABLE IF NOT EXISTS player (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    login TEXT UNIQUE NOT NULL,
+    password TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Индекс для быстрого поиска по логину
+-- CREATE INDEX IF NOT EXISTS idx_player_login ON player(login);

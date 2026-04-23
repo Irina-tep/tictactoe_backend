@@ -11,3 +11,9 @@ type GameData struct {
 	ID    uuid.UUID
 	Field [3][3]int
 }
+
+//модель с логином и паролем
+type SignUpRequest struct {
+	Login string 
+	Password string 
+}

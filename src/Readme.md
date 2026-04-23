@@ -154,22 +154,42 @@ go run main.go
 
 ## 📊 Примеры использования API
 
-### Создание игры:
-```bash
-curl -X POST http://localhost:8080/game -H "Content-Type: application/json"
-```
-
-### Получение состояния:
-```bash
-curl http://localhost:8080/game/{game_id}
-```
-
-### Выполнение хода:
-```bash
-curl -X POST http://localhost:8080/game/23df4532-3998-465d-93a3-d45603b52108 \
+### 1. Регистрация пользователя
+Bash
+Run
+curl -X POST http://localhost:8080/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"field":[[0,0,0],[0,1,0],[0,0,0]]}'
-```
+  -d '{"login": "player1", "password": "pass123"}'
+### 2. Авторизация (получение токена)
+Bash
+Run
+curl -X POST http://localhost:8080/auth/login \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
+В ответ получите user_id и token.
+
+### 3. Создание новой игры (с авторизацией)
+Bash
+Run
+curl -X POST http://localhost:8080/game \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
+В ответ получите id игры и пустое поле.
+
+### 4. Выполнить ход (POST /game/{id})
+Нужно отправить поле с одним изменением — поставить 1 (крестик, игрок X) в пустую клетку. Сервер сам сделает ответный ход (нолик, 2).
+
+Bash
+Run
+curl -X POST http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"field": [[1,0,0],[0,0,0],[0,0,0]]}'
+
+### 5. Получить состояние игры
+Bash
+Run
+curl -X GET http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"asic dGVzdHVzZXI6c2VjcmV0MTIz"
+
 
 ## 🎮 Логика игры
 

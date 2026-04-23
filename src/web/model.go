@@ -1,5 +1,7 @@
 package web
 
+import "github.com/google/uuid"
+
 // запрос на создание новой игры
 type CreateGameRequest struct {
 }
@@ -32,8 +34,34 @@ type GameResponse struct {
 	Finished bool      `json:"finished"`
 }
 
+// Запрос на регистрацию пользователя
+type SignUpRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
+
+// Ответ на регистрацию
+type SignUpResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	UserID  string `json:"user_id,omitempty"`
+}
+
+// Ответ на аутентификацию
+type AuthResponse struct {
+	Success bool   `json:"success"`
+	UserID  string `json:"user_id"`
+	Token   string `json:"token,omitempty"`
+}
+
+// UserAuthenticator — middleware для проверки авторизации.
+// Содержит информацию об аутентифицированном пользователе.
+type UserAuthenticator struct {
+	UserID uuid.UUID
+}
+
+// Ошибка в формате JSON
 type ErrorResponse struct {
-	Error   string `json:"error"`
-	Code    int    `json:"code"`
-	Details string `json:"details,omitempty"`
+	Error string `json:"error"`
+	Code  int    `json:"code"`
 }
