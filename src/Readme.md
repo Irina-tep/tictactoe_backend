@@ -220,3 +220,69 @@ return PlayerO
 sudo lsof -i :8080
 
 kill -9 27417
+
+
+## Игра с компьютером
+# 1. Регистрация пользователя
+curl -X POST http://localhost:8080/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"login": "it", "password": "123456"}'
+
+# 2. Аутентификация (получение токена)
+curl -X POST http://localhost:8080/auth/login \
+  -H "Authorization: Basic $(echo -n 'it:123456' | base64)"
+
+# 3. Создание игры
+curl -X POST http://localhost:8080/game \
+  -H "Authorization: Basic YWxpY2U6MTIzNDU2" \
+  -H "Content-Type: application/json" \
+  -d '{"game_type": "pve"}'
+
+# 4. Ход игрока
+curl -X POST http://localhost:8080/game/xxx \
+  -H "Authorization: Basic YWxpY2U6MTIzNDU2" \
+  -H "Content-Type: application/json" \
+  -d '{"row": 1, "col": 1, "field": [[0,0,0],[0,1,0],[0,0,0]]}'
+
+## Игра с двумя игроками
+# 1. Регистрация игрока А
+curl -X POST http://localhost:8080/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"login": "it", "password": "123456"}'
+
+# 2. Регистрация игрока Б
+curl -X POST http://localhost:8080/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"login": "an", "password": "123456"}'
+
+# 3. Аутентификация Алисы
+curl -X POST http://localhost:8080/auth/login \
+  -H "Authorization: Basic $(echo -n 'it:123456' | base64)"
+# → token_alice = "Basic YWxpY2U6MTIzNDU2"
+
+# 4. Аутентификация Боба
+curl -X POST http://localhost:8080/auth/login \
+  -H "Authorization: Basic $(echo -n 'an:123456' | base64)"
+
+# 5. Алиса создаёт игру PvP
+curl -X POST http://localhost:8080/game \
+  -H "Authorization: Basic $(echo -n 'it:123456' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"game_type": "pvp"}'
+# → id = "xxx"
+
+# 6. Боб присоединяется
+curl -X POST http://localhost:8080/game/xxx/join \
+  -H "Authorization: Basic $(echo -n 'an:123456' | base64)"
+
+# 7. Алиса ходит
+curl -X POST http://localhost:8080/game/xxx \
+  -H "Authorization: Basic $(echo -n 'it:123456' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"row": 1, "col": 1, "field": [[0,0,0],[0,1,0],[0,0,0]]}'
+
+# 8. Боб ходит
+curl -X POST http://localhost:8080/game/xxx \
+  -H "Authorization: Basic $(echo -n 'an:123456' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"row": 0, "col": 0, "field": [[2,0,0],[0,1,0],[0,0,0]]}'

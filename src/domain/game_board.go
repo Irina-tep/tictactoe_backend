@@ -95,3 +95,5 @@ func (g GameField) Evaluate() int {
 		return 0
 	}
 }
+
+

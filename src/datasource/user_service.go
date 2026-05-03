@@ -22,11 +22,6 @@ func NewAutorizationService(uRepo UserRepository) *AuthorizationService {
 	}
 }
 
-// // Метод регистрации, который принимает SignUpRequest и возвращает факт успешной регистрации;
-// func (*UserService) Registration(singUp SignUpRequest) bool {
-
-// }
-
 func (authS *AuthorizationService) Registration(login, password string) (bool, error) {
 	ctx := context.Background()
 	// Создаем доменного пользователя
@@ -71,8 +66,3 @@ func (authS *AuthorizationService) Authenticate(authHeader string) (uuid.UUID, e
 	}
 	return user.ID, nil
 }
-
-// func (authS *AuthorizationService) GetUserByID(id uuid.UUID) (*domain.User, error) {
-// 	ctx := context.Background()
-// 	return authS.userRepo.GetByID(ctx, id)
-// }

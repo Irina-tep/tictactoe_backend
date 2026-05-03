@@ -2,6 +2,7 @@ package domain
 
 import "errors"
 
+// значки, которыми будут ходить пользователи
 const (
 	Empty   = 0
 	PlayerX = 1
@@ -13,6 +14,19 @@ const (
 	ResultWinX        = 1
 	ResultWinO        = 2
 	ResultDraw        = 3
+)
+
+const (
+	GameTypePvP = "pvp" // игрок против игрока
+	GameTypePvC = "pvc" // игрок против компьютера
+)
+
+// состояния для текущей игры
+const (
+	WaitingForPlayers string = "waiting"        //Ожидание игроков
+	PlayerToMove      string = "player_to_move" //Ход игрока с UUID
+	UUIDWins          string = "player_wins"    //Победа игрока с UUID.
+	Draw              string = "draw"           //Ничья
 )
 
 var (

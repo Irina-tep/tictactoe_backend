@@ -23,6 +23,6 @@ func NewRouter(gameService *datasource.GameService, userService *datasource.Auth
 	mux.Handle("POST /game", authMiddleware(http.HandlerFunc(handler.CreateGame)))
 	mux.Handle("GET /game/{id}", authMiddleware(http.HandlerFunc(handler.GetGame)))
 	mux.Handle("POST /game/{id}", authMiddleware(http.HandlerFunc(handler.UpdateGame)))
-
+	mux.Handle("POST /game/{id}/join", authMiddleware(http.HandlerFunc(handler.JoinGame)))
 	return mux //Возвращает готовый маршрутизатор, который можно использовать в HTTP-сервере
 }

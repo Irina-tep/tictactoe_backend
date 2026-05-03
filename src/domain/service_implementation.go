@@ -16,7 +16,6 @@ func (s *GameServiceInterface) NextTurn(currentGame CurrentGame) (int, int, erro
 	}
 
 	currentPlayer := s.GetCurrentPlayer(currentGame.CurrentField)
-
 	bestScore := 0
 	if currentPlayer == PlayerX {
 		bestScore = math.MinInt32
@@ -132,7 +131,7 @@ func (s *GameServiceInterface) minimax(field *GameField, depth int, isMaximizing
 	}
 }
 
-// определяет, чей сейчас ход если ход
+// определяет, чей сейчас ход по символу
 func (s *GameServiceInterface) GetCurrentPlayer(field *GameField) int {
 	countX := 0
 	countO := 0
@@ -152,6 +151,8 @@ func (s *GameServiceInterface) GetCurrentPlayer(field *GameField) int {
 	}
 	return PlayerO
 }
+
+
 
 // проверяет игровое поле на целостность и соответствие ожидаемому состоянию
 func (s *GameServiceInterface) CheckField(currentGame CurrentGame, expectedGame CurrentGame) (bool, error) {

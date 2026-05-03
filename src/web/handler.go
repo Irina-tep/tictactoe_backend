@@ -73,19 +73,35 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	ctx := r.Context()
+	userID, ok := GetUserIDFromContext(ctx)
+	
+	if !ok {
+		h.sendError(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+	var req GameRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req.GameType = "pvc"
+	}
+	if req.GameType != "pvc" && req.GameType != "pvp" {
+		req.GameType = "pvc"
+	}
 
-	game := NewGame()
+	game := NewGameWithPlayer(userID, req.GameType)
 
-	// ctx := r.Context()
 	err := h.gameService.Repo.Save(game)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
 		return
 	}
 
+	fmt.Printf("Game saved successfully\n") //удалить
+
 	response := CreateGameResponse{
-		ID:    game.ID.String(),
-		Field: game.CurrentField.Field,
+		ID:       game.ID.String(),
+		Field:    game.CurrentField.Field,
+		GameType: req.GameType,
 	}
 
 	//Отправка JSON ответа
@@ -176,31 +192,34 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+
 	ctx := r.Context()
+	userID, success := GetUserIDFromContext(ctx)
+	if !success {
+		http.Error(w, "user ID is required", http.StatusBadRequest)
+	}
+
 	id, err := uuid.Parse(gameID)
 	if err != nil {
 		http.Error(w, "Game ID is required", http.StatusBadRequest)
 		return
 	}
+	// Загружаем игру, чтобы узнать её тип
 	currentGame, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Game not found: %v", err), http.StatusNotFound)
 		return
 	}
-
 	if currentGame.CurrentField.IsFinished() {
 		http.Error(w, "Game is already finished", http.StatusConflict)
 		return
 	}
-
-	currentPlayer := h.gameService.GetCurrentPlayer(currentGame.CurrentField)
-
-	_, err = ToDomainFromRequest(gameID, &req)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Invalid game field: %v", err), http.StatusBadRequest)
-		return
-	}
-
+	// Используем ToDomainFromRequest для создания "ожидаемой" игр
+	// expectedGame, err := ToDomainFromRequest(gameID, &req)
+	// if err != nil {
+	// 	http.Error(w, fmt.Sprintf("Invalid game field: %v", err), http.StatusBadRequest)
+	// 	return
+	// }
 	// Проверяем разницу между текущим полем и присланным
 	diffCount, changedRow, changedCol, oldVal, newVal := h.compareFieldsDetailed(currentGame.CurrentField.Field, req.Field)
 
@@ -215,48 +234,101 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Cell [%d][%d] is not empty", changedRow, changedCol), http.StatusBadRequest)
 		return
 	}
+	// Определяем, какой игрок должен ходить
+	currentPlayer := h.gameService.GetCurrentPlayer(currentGame.CurrentField)
+
 	if newVal != currentPlayer {
 		http.Error(w, fmt.Sprintf("Cell [%d][%d] must be %d (current player), got %d", changedRow, changedCol, currentPlayer, newVal), http.StatusBadRequest)
 		return
 	}
 
-	// Проверяем, что пользователь сделал ход за правильного игрока (это уже должно быть отражено в присланном поле).Обновляем игру присланным полем
+	// Проверяем, что ходит именно тот пользователь, который должен
+	var expectedPlayerID uuid.UUID
+	for _, p := range currentGame.Players {
+		if p.Symbol == currentPlayer {
+			expectedPlayerID = p.PlayerID
+			break
+		}
+	}
+	if userID != expectedPlayerID {
+		h.sendError(w, "Not your turn", http.StatusForbidden)
+		return
+	}
+	// Обновляем поле в текущей игре
 	currentGame.CurrentField.Field = req.Field
-
+	// Проверяем статус после хода
+	if currentGame.CurrentField.IsFinished() {
+		result := currentGame.CurrentField.CheckResult()
+		switch result {
+		case domain.ResultDraw:
+			currentGame.GameState = domain.Draw
+		case domain.ResultWinX:
+			for _, p := range currentGame.Players {
+				if p.Symbol == domain.PlayerX {
+					currentGame.GameState = domain.UUIDWins + p.PlayerID.String()
+					break
+				}
+			}
+		case domain.ResultWinO:
+			for _, p := range currentGame.Players {
+				if p.Symbol == domain.PlayerO {
+					currentGame.GameState = domain.UUIDWins + p.PlayerID.String()
+					break
+				}
+			}
+		}
+	} else {
+		// Переключаем ход на другого игрока
+		for _, p := range currentGame.Players {
+			if p.PlayerID != userID {
+				currentGame.GameState = domain.PlayerToMove + p.PlayerID.String()
+				break
+			}
+		}
+	}
+	// Сохраняем
 	err = h.gameService.Repo.Save(currentGame)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
 		return
 	}
+	if currentGame.GameType == "pvc" && !currentGame.CurrentField.IsFinished() {
+		//для игры с компьютером
+		row, col, err := h.gameService.GetBestMove(ctx, id)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to compute computer move: %v", err), http.StatusInternalServerError)
+			return
+		}
 
-	if currentGame.CurrentField.IsFinished() {
-		response := h.gameToResponse(currentGame)
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-		return
+		err = h.gameService.MakeMove(ctx, id, userID, row, col)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
+			return
+		}
+
 	}
-
-	row, col, err := h.gameService.GetBestMove(ctx, id)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to compute computer move: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	err = h.gameService.MakeMove(ctx, id, row, col)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
-		return
-	}
-
+	// Возвращаем обновлённую игру
 	updatedGame, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to load updated game: %v", err), http.StatusInternalServerError)
+		http.Error(w, "Failed to load game", http.StatusInternalServerError)
+		return
+	}
+	if updatedGame.CurrentField.IsFinished() {
+		http.Error(w, "Game is already finished", http.StatusConflict)
+		return
+	}
+
+	err = h.gameService.Repo.Save(updatedGame)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	response := h.gameToResponse(updatedGame)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+	return
+
 }
 
 // сравнивает два поля и возвращает подробности первого изменения.
@@ -350,4 +422,83 @@ func (h *GameHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
+}
+
+// Метод для присоединения к игре
+func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	gameID := r.PathValue("id")
+	if gameID == "" {
+		http.Error(w, "Game ID is required", http.StatusBadRequest)
+		return
+	}
+	ctx := r.Context()
+	userID, ok := GetUserIDFromContext(ctx)
+	if !ok {
+		h.sendError(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+	id, err := uuid.Parse(gameID)
+	if err != nil {
+		h.sendError(w, "Invalid game ID", http.StatusBadRequest)
+		return
+	}
+	// Получаем игр
+	game, err := h.gameService.Repo.GetByID(ctx, id)
+	if err != nil {
+		h.sendError(w, "Game not found", http.StatusNotFound)
+		return
+	}
+
+	// Проверяем, что игра ожидает игроков
+	if game.GameState != domain.WaitingForPlayers {
+		h.sendError(w, "Game is not accepting players", http.StatusConflict)
+		return
+	}
+	// Проверяем, что это PvP игра
+	if game.GameType != domain.GameTypePvP {
+		h.sendError(w, "Cannot join a computer game", http.StatusBadRequest)
+		return
+	}
+	// Проверяем, что пользователь еще не в игре
+	for _, p := range game.Players {
+		if p.PlayerID == userID {
+			h.sendError(w, "You are already in this game", http.StatusConflict)
+			return
+		}
+	}
+	for i, p := range game.Players {
+		if p.PlayerID == uuid.Nil {
+			// Определяем символ для нового игрока
+			var symbol int
+			if i == 0 {
+				symbol = domain.PlayerX
+			} else {
+				symbol = domain.PlayerO
+			}
+			game.Players[i] = domain.Players{
+				PlayerID: userID,
+				Symbol:   symbol,
+			}
+			// Меняем статус игры
+			game.GameState = domain.PlayerToMove + game.Players[0].PlayerID.String()
+			// Сохраняем изменения
+			err = h.gameService.Repo.Save(game)
+			if err != nil {
+				h.sendError(w, "Failed to join game", http.StatusInternalServerError)
+				return
+			}
+			response := h.gameToResponse(game)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(response)
+			return
+		}
+
+	}
+	// Если все слоты заняты
+	h.sendError(w, "Game is full", http.StatusConflict)
 }

@@ -35,8 +35,11 @@ func NewStorage(lc fx.Lifecycle) *datasource.Storage {
 	_, err = storage.DB().Exec(ctx, `CREATE TABLE IF NOT EXISTS games (
 		id UUID PRIMARY KEY,
 		field JSONB NOT NULL,
+		game_state TEXT DEFAULT 'waiting',
+		players JSONB NOT NULL DEFAULT '[]'::jsonb,
 		created_at TIMESTAMP NOT NULL,
-		updated_at TIMESTAMP NOT NULL
+		updated_at TIMESTAMP NOT NULL,
+		game_type TEXT DEFAULT 'pvp'
 	)`)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create games table: %v", err))
@@ -113,7 +116,7 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 				fmt.Println("  POST   /game          - создать новую игру (требуется авторизация)")
 				fmt.Println("  GET    /game/{id}     - получить состояние игры (требуется авторизация)")
 				fmt.Println("  POST   /game/{id}     - сделать ход (требуется авторизация)")
-
+				fmt.Println("  POST   /game/{id}/join - прсоединиться к игре")
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					log.Printf("Ошибка сервера: %v\n", err)
 				}

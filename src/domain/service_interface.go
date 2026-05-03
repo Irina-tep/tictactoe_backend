@@ -20,17 +20,3 @@ type UserService interface {
 	Authenticate(authHeader string) (uuid.UUID, error)
 	GetUserByID(id uuid.UUID) (*User, error)
 }
-
-// // сервис авторизации, который реализует интерфейс UserService
-// type AutorizationService struct {
-// }
-
-// // Метод регистрации, который принимает SignUpRequest и возвращает факт успешной регистрации;
-// func (*UserService) Registration(singUp SignUpRequest) bool {
-
-// }
-
-// // Метод авторизации, который принимает в заголовке логин и пароль в виде base64(login:password) и возвращает UUID пользователя.
-// func (*UserService) Autorization(login, password base64.Encoding) uuid.UUID {
-
-// }

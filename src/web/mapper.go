@@ -23,39 +23,59 @@ func ToDomainFromRequest(gameID string, req *GameRequest) (*domain.CurrentGame, 
 		Field: req.Field,
 	}
 
-	var game domain.CurrentGame
-	if gameID == "" {
-		game = domain.NewCurrentGame(&field)
-	} else {
-
-		id, err := uuid.Parse(gameID) //преобразования строкового представления UUID в его внутренний бинарный (или структурированный) формат
-		if err != nil {
-			return nil, ErrInvalidGameID
-		}
-		game = domain.CurrentGame{
-			ID:           id,
-			CurrentField: &field,
-		}
+	// var user1, user2 domain.Players
+	// player1id, err := uuid.Parse(req.Player1.ID) //преобразования строкового представления UUID в его внутренний бинарный (или структурированный) формат
+	// if err != nil {
+	// 	return nil, ErrInvalidGameID
+	// }
+	// player2id, err := uuid.Parse(req.Player2.ID) //преобразования строкового представления UUID в его внутренний бинарный (или структурированный) формат
+	// if err != nil {
+	// 	return nil, ErrInvalidGameID
+	// }
+	// user1.PlayerID = player1id
+	// user1.Symbol = req.Player1.Symbol
+	// user2.PlayerID = player2id
+	// user2.Symbol = req.Player2.Symbol
+	id, err := uuid.Parse(gameID)
+	if err != nil {
+		return nil, ErrInvalidGameID
+	}
+	game := domain.CurrentGame{
+		ID:           id,
+		CurrentField: &field,
+		GameState:    domain.PlayerToMove,  // + player1.ID, //почему первый?
+		// Players:      [2]domain.Players{user1, user2},
+		// GameType: req.GameType,
 	}
 	return &game, nil
 }
 
-func ToResponse(game *domain.CurrentGame) *GameResponse {
-	if game == nil {
-		return nil
-	}
-	return &GameResponse{
-		ID:    game.ID.String(),
-		Field: game.CurrentField.Field,
-		// Остальные поля заполняются в обработчике
-	}
-}
-
-// создает новую игру из CreateGameRequest.
-func NewGame() *domain.CurrentGame {
+// создает новую игру c user из CreateGameRequest.
+func NewGameWithPlayer(userID uuid.UUID, gameType string) *domain.CurrentGame {
 	field := domain.GameField{
 		Field: [3][3]int{},
 	}
-	game := domain.NewCurrentGame(&field)
+
+	player1 := domain.Players{
+		PlayerID: userID,
+		Symbol:   domain.PlayerX,
+	}
+	var game domain.CurrentGame
+	if gameType == "pvp" {
+		// Против игрока — второй игрок пустой, статус waiting
+		player2 := domain.Players{}
+		game = domain.NewCurrentGame(&field, player1, player2)
+		game.GameState = domain.WaitingForPlayers
+	} else {
+		// Против компьютера — второй игрок с нулевым UUID
+		player2 := domain.Players{
+			PlayerID: uuid.Nil,
+			Symbol:   domain.PlayerO,
+		}
+		game = domain.NewCurrentGame(&field, player1, player2)
+		game.GameState = domain.PlayerToMove + userID.String()
+
+	}
+	game.GameType = gameType
 	return &game
 }

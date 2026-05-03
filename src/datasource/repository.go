@@ -34,7 +34,10 @@ func (r *GameRepositoryStruct) Save(game *domain.CurrentGame) error {
 	if err != nil {
 		return err
 	}
-	r.storage.SaveGame(ctx, game.ID, gameData)
+	err = r.storage.SaveGame(ctx, game.ID, gameData)
+	if err != nil {
+        return ErrFailedToSaveGame
+    }
 	return nil
 }
 
@@ -48,4 +51,3 @@ func (r *GameRepositoryStruct) GetByID(ctx context.Context, gameID uuid.UUID) (*
 	}
 	return r.mapper.ToDomain(gameData)
 }
-

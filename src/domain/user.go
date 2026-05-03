@@ -11,6 +11,7 @@ type User struct {
 	ID       uuid.UUID
 	Login    string
 	Password string
+	Symbol int
 }
 
 func NewUser(login, password string) (User, error) {
