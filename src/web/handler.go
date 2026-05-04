@@ -75,7 +75,7 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	userID, ok := GetUserIDFromContext(ctx)
-	
+
 	if !ok {
 		h.sendError(w, "User not authenticated", http.StatusUnauthorized)
 		return
@@ -95,8 +95,6 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
 		return
 	}
-
-	fmt.Printf("Game saved successfully\n") //удалить
 
 	response := CreateGameResponse{
 		ID:       game.ID.String(),

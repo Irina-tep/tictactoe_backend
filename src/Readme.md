@@ -272,17 +272,17 @@ curl -X POST http://localhost:8080/game \
 # → id = "xxx"
 
 # 6. Боб присоединяется
-curl -X POST http://localhost:8080/game/xxx/join \
+curl -X POST http://localhost:8080/game/5c2e9934-cd1c-46ef-bac2-57a09d2a29aa/join \
   -H "Authorization: Basic $(echo -n 'an:123456' | base64)"
 
 # 7. Алиса ходит
 curl -X POST http://localhost:8080/game/xxx \
   -H "Authorization: Basic $(echo -n 'it:123456' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"row": 1, "col": 1, "field": [[0,0,0],[0,1,0],[0,0,0]]}'
+  -d '{"field": [[0,0,0],[0,1,0],[0,0,0]]}'
 
 # 8. Боб ходит
 curl -X POST http://localhost:8080/game/xxx \
   -H "Authorization: Basic $(echo -n 'an:123456' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"row": 0, "col": 0, "field": [[2,0,0],[0,1,0],[0,0,0]]}'
+  -d '{"field": [[2,0,0],[0,1,0],[0,0,0]]}'
