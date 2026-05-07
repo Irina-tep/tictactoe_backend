@@ -23,19 +23,6 @@ func ToDomainFromRequest(gameID string, req *GameRequest) (*domain.CurrentGame, 
 		Field: req.Field,
 	}
 
-	// var user1, user2 domain.Players
-	// player1id, err := uuid.Parse(req.Player1.ID) //преобразования строкового представления UUID в его внутренний бинарный (или структурированный) формат
-	// if err != nil {
-	// 	return nil, ErrInvalidGameID
-	// }
-	// player2id, err := uuid.Parse(req.Player2.ID) //преобразования строкового представления UUID в его внутренний бинарный (или структурированный) формат
-	// if err != nil {
-	// 	return nil, ErrInvalidGameID
-	// }
-	// user1.PlayerID = player1id
-	// user1.Symbol = req.Player1.Symbol
-	// user2.PlayerID = player2id
-	// user2.Symbol = req.Player2.Symbol
 	id, err := uuid.Parse(gameID)
 	if err != nil {
 		return nil, ErrInvalidGameID
@@ -43,9 +30,7 @@ func ToDomainFromRequest(gameID string, req *GameRequest) (*domain.CurrentGame, 
 	game := domain.CurrentGame{
 		ID:           id,
 		CurrentField: &field,
-		GameState:    domain.PlayerToMove,  // + player1.ID, //почему первый?
-		// Players:      [2]domain.Players{user1, user2},
-		// GameType: req.GameType,
+		GameState:    domain.PlayerToMove, 
 	}
 	return &game, nil
 }

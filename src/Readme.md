@@ -188,7 +188,7 @@ curl -X POST http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
 Bash
 Run
 curl -X GET http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
-  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"asic dGVzdHVzZXI6c2VjcmV0MTIz"
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
 
 
 ## 🎮 Логика игры

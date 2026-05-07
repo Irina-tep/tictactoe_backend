@@ -4,6 +4,7 @@ import (
 	"context"
 	"domain"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -12,12 +13,18 @@ import (
 // UserRepository - интерфейс репозитория для работы с пользователями
 type UserRepository interface {
 	Save(ctx context.Context, u *domain.User) error
-	GetByID(ctx context.Context, userID uuid.UUID) (*domain.User, error)
+	GetByID(ctx context.Context, userID uuid.UUID) (*UserData, error)
 	GetByLogin(ctx context.Context, login string) (*domain.User, error)
 }
 
 type UserRepositoryStruct struct {
 	strorage *Storage
+}
+
+type UserData struct {
+	UserD     *domain.User
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func NewUserRepositoryStruct(s *Storage) *UserRepositoryStruct {
@@ -45,16 +52,17 @@ func (r *UserRepositoryStruct) Save(ctx context.Context, u *domain.User) error {
 
 }
 
-func (r *UserRepositoryStruct) GetByID(ctx context.Context, userID uuid.UUID) (*domain.User, error) {
-	var user domain.User
-
+func (r *UserRepositoryStruct) GetByID(ctx context.Context, userID uuid.UUID) (*UserData, error) {
+	var user UserData
+	user.UserD = &domain.User{}
 	if userID == uuid.Nil {
 		return nil, errors.New("user ID is empty")
 	}
 	if r.strorage.db == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
-	err := r.strorage.db.QueryRow(ctx, "SELECT id, login, password FROM player WHERE id = $1", userID).Scan(&user.ID, &user.Login, &user.Password)
+	var createdAt, updatedAt time.Time
+	err := r.strorage.db.QueryRow(ctx, "SELECT id, login, password, created_at, updated_at FROM player WHERE id = $1", userID).Scan(&user.UserD.ID, &user.UserD.Login, &user.UserD.Password, &createdAt, &updatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")
 	}

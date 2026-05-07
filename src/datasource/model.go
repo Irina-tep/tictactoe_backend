@@ -9,10 +9,10 @@ import (
 // Включает мьютекс для защиты от конкурентного доступа к конкретной игре
 type GameData struct {
 	ID        uuid.UUID
-	Field     [3][3]int
+	Field     [3][3]int `json:"field"`
 	GameState string
 	GameType string
-	Players   [2]PlayersData
+	Players   [2]PlayersData  `json:"players"`
 }
 
 type PlayersData struct {
@@ -20,8 +20,3 @@ type PlayersData struct {
 	Symbol   int
 }
 
-//модель с логином и паролем
-// type SignUpRequest struct {
-// 	Login string
-// 	Password string
-// }

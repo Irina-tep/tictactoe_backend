@@ -1,5 +1,6 @@
 package web
 
+import "time"
 
 // ответ с созданной игрой
 type CreateGameResponse struct {
@@ -33,6 +34,17 @@ type GameResponse struct {
 	GameType string    `json:"game_type"`
 }
 
+// ответ с состоянием игры
+type CurrentGamesResponse struct {
+	ID       string    `json:"id"`
+	Field    [3][3]int `json:"field"`
+	GameState   string    `json:"game_state"`
+	Players [2]PlayerRequest `json:"players"`
+	GameType string    `json:"game_type"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // Запрос на регистрацию пользователя
 type SignUpRequest struct {
 	Login    string `json:"login"`
@@ -57,4 +69,17 @@ type AuthResponse struct {
 type ErrorResponse struct {
 	Error string `json:"error"`
 	Code  int    `json:"code"`
+}
+//запрос на информацию по ID
+type UserInfoRequest struct {
+	UserID string `json:"user_id"`
+}
+
+//ответ с информацией об игроке
+type UserInfoResponse struct {
+	UserID     string `json:"user_id"`
+	Login string `json:"login"`
+	Password string `json:"password"`
+	Created_at time.Time `json:"created_at"`
+	Updated_at time.Time `json:"updated_at"`
 }

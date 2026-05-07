@@ -115,6 +115,8 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 				fmt.Println("  POST   /auth/login    - авторизация пользователя (без авторизации)")
 				fmt.Println("  POST   /game          - создать новую игру (требуется авторизация)")
 				fmt.Println("  GET    /game/{id}     - получить состояние игры (требуется авторизация)")
+				fmt.Println("  GET    /games     - получить состояние игры")
+				fmt.Println("  GET    /info     - получить состояние игры")
 				fmt.Println("  POST   /game/{id}     - сделать ход (требуется авторизация)")
 				fmt.Println("  POST   /game/{id}/join - прсоединиться к игре")
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

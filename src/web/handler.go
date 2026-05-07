@@ -169,6 +169,7 @@ func (h *GameHandler) gameToResponse(game *domain.CurrentGame) *GameResponse {
 		ScoreO:   scoreO,
 		Finished: finished,
 	}
+
 }
 
 // обрабатывает ход пользователя и выполняет ответный ход компьютера. POST /game/{id}
@@ -212,12 +213,7 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Game is already finished", http.StatusConflict)
 		return
 	}
-	// Используем ToDomainFromRequest для создания "ожидаемой" игр
-	// expectedGame, err := ToDomainFromRequest(gameID, &req)
-	// if err != nil {
-	// 	http.Error(w, fmt.Sprintf("Invalid game field: %v", err), http.StatusBadRequest)
-	// 	return
-	// }
+
 	// Проверяем разницу между текущим полем и присланным
 	diffCount, changedRow, changedCol, oldVal, newVal := h.compareFieldsDetailed(currentGame.CurrentField.Field, req.Field)
 
@@ -298,7 +294,7 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = h.gameService.MakeMove(ctx, id, userID, row, col)
+		err = h.gameService.MakeMove(ctx, id, uuid.Nil, row, col)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
 			return
@@ -311,10 +307,10 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to load game", http.StatusInternalServerError)
 		return
 	}
-	if updatedGame.CurrentField.IsFinished() {
-		http.Error(w, "Game is already finished", http.StatusConflict)
-		return
-	}
+	// if updatedGame.CurrentField.IsFinished() {
+	// 	http.Error(w, "Game is already finished", http.StatusConflict)
+	// 	return
+	// }
 
 	err = h.gameService.Repo.Save(updatedGame)
 	if err != nil {
@@ -325,8 +321,6 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 	response := h.gameToResponse(updatedGame)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-	return
-
 }
 
 // сравнивает два поля и возвращает подробности первого изменения.
@@ -369,7 +363,7 @@ func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	req.Password = strings.TrimSpace(req.Password)
 
 	if req.Login == "" || req.Password == "" {
-		h.sendError(w, "Login and password are required", http.StatusBadRequest)
+		h.sendError(w, "Login and password are required", http.StatusUnauthorized)
 		return
 	}
 
@@ -377,9 +371,9 @@ func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	success, err := h.userService.Registration(req.Login, req.Password)
 	if err != nil {
 		status := http.StatusInternalServerError
-		// Если ошибка валидации — возвращаем 400
+		// Если ошибка валидации — возвращаем 401
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
-			status = http.StatusBadRequest
+			status = http.StatusUnauthorized
 		}
 		h.sendError(w, err.Error(), status)
 		return
@@ -499,4 +493,86 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 	}
 	// Если все слоты заняты
 	h.sendError(w, "Game is full", http.StatusConflict)
+}
+
+// для получения доступных текущих игр
+func (h *GameHandler) GetGames(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := r.Context()
+	_, ok := GetUserIDFromContext(ctx)
+	if !ok {
+		h.sendError(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+	game, err := h.gameService.Repo.GetByCurrentGames(ctx)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Game not found: %v", err), http.StatusNotFound)
+		return
+	}
+	response := make([]CurrentGamesResponse, len(game))
+	for i, v := range game {
+		players := [2]PlayerRequest{}
+		players[0] = PlayerRequest{
+			ID:     v.Players[0].PlayerID.String(),
+			Symbol: v.Players[0].Symbol,
+		}
+		players[1] = PlayerRequest{
+			ID:     v.Players[1].PlayerID.String(),
+			Symbol: v.Players[1].Symbol,
+		}
+
+		response[i] = CurrentGamesResponse{
+			ID:        v.ID.String(),
+			Field:     v.CurrentField.Field,
+			GameState: v.GameState,
+			GameType:  v.GameType,
+			Players:   players,
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// для получения доступных текущих игр
+func (h *GameHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ctx := r.Context()
+	_, ok := GetUserIDFromContext(ctx)
+	if !ok {
+		h.sendError(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+	userID := r.PathValue("id")
+	if userID == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
+	id, err := uuid.Parse(userID)
+	if err != nil {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
+	user, err := h.userService.UserRepo.GetByID(ctx, id)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("ID not found: %v", err), http.StatusNotFound)
+		return
+	}
+
+	response := &UserInfoResponse{
+		UserID:     user.UserD.ID.String(),
+		Login:      user.UserD.Login,
+		Password:   user.UserD.Password,
+		Created_at: user.CreatedAt,
+		Updated_at: user.UpdatedAt,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

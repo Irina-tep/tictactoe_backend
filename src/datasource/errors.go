@@ -9,4 +9,5 @@ var (
 	ErrGameIDIsEmpty      = errors.New("game ID cannot be empty")
 	ErrGameIDNotFound     = errors.New("game with ID not found")
 	ErrFailedToSaveGame     = errors.New("failed to save game")
+	
 )

@@ -11,7 +11,7 @@ type User struct {
 	ID       uuid.UUID
 	Login    string
 	Password string
-	Symbol int
+	Symbol   int
 }
 
 func NewUser(login, password string) (User, error) {
@@ -33,7 +33,7 @@ func NewUser(login, password string) (User, error) {
 }
 
 func validateLogin(login string) error {
-	if len(login) < 3 && len(login) > 20 {
+	if len(login) < 3 || len(login) > 20 {
 		return errors.New("Invalid login")
 	}
 	expected, _ := regexp.MatchString(`^[a-zA-Z0-9_]+$`, login)
@@ -44,7 +44,7 @@ func validateLogin(login string) error {
 }
 
 func validatePassword(password string) error {
-	if len(password) < 6 && len(password) > 20 {
+	if len(password) < 6 || len(password) > 20 {
 		return errors.New("Invalid password")
 	}
 	return nil

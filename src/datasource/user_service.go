@@ -13,12 +13,12 @@ import (
 // Создай сервис авторизации, который использует UserService
 // UserServiceImpl - реализация UserService
 type AuthorizationService struct {
-	userRepo UserRepository
+	UserRepo UserRepository
 }
 
 func NewAutorizationService(uRepo UserRepository) *AuthorizationService {
 	return &AuthorizationService{
-		userRepo: uRepo,
+		UserRepo: uRepo,
 	}
 }
 
@@ -30,7 +30,7 @@ func (authS *AuthorizationService) Registration(login, password string) (bool, e
 		return false, err
 	}
 	// Сохраняем в БД
-	if err := authS.userRepo.Save(ctx, &user); err != nil {
+	if err := authS.UserRepo.Save(ctx, &user); err != nil {
 		return false, err
 	}
 	return true, nil
@@ -56,7 +56,7 @@ func (authS *AuthorizationService) Authenticate(authHeader string) (uuid.UUID, e
 	password := parts[1]
 
 	ctx := context.Background()
-	user, err := authS.userRepo.GetByLogin(ctx, login)
+	user, err := authS.UserRepo.GetByLogin(ctx, login)
 	if err != nil {
 		return uuid.Nil, err
 	}

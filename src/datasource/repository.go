@@ -11,6 +11,7 @@ import (
 type GameRepository interface {
 	Save(game *domain.CurrentGame) error
 	GetByID(ctx context.Context, gameID uuid.UUID) (*domain.CurrentGame, error)
+	GetByCurrentGames(ctx context.Context) ([]*domain.CurrentGame, error)
 }
 
 type GameRepositoryStruct struct {
@@ -36,8 +37,8 @@ func (r *GameRepositoryStruct) Save(game *domain.CurrentGame) error {
 	}
 	err = r.storage.SaveGame(ctx, game.ID, gameData)
 	if err != nil {
-        return ErrFailedToSaveGame
-    }
+		return ErrFailedToSaveGame
+	}
 	return nil
 }
 
@@ -51,3 +52,19 @@ func (r *GameRepositoryStruct) GetByID(ctx context.Context, gameID uuid.UUID) (*
 	}
 	return r.mapper.ToDomain(gameData)
 }
+
+func (r *GameRepositoryStruct) GetByCurrentGames(ctx context.Context) ([]*domain.CurrentGame, error) {
+	gamesData, err := r.storage.GetGames(ctx)
+	if err != nil {
+		return nil, ErrGameIDNotFound
+	}
+	result := make([]*domain.CurrentGame, len(gamesData))
+	for i, v := range gamesData {
+		result[i], err = r.mapper.ToDomain(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, err
+}
+

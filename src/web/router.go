@@ -18,10 +18,11 @@ func NewRouter(gameService *datasource.GameService, userService *datasource.Auth
 	// Публичные endpoint'ы (без авторизации)
 	mux.HandleFunc("POST /auth/signup", handler.SignUp)
 	mux.HandleFunc("POST /auth/login", handler.Authenticate)
-
 	// Защищённые endpoint'ы (требуют авторизацию)
 	mux.Handle("POST /game", authMiddleware(http.HandlerFunc(handler.CreateGame)))
 	mux.Handle("GET /game/{id}", authMiddleware(http.HandlerFunc(handler.GetGame)))
+	mux.Handle("GET /games", authMiddleware(http.HandlerFunc(handler.GetGames)))
+	mux.Handle("GET /info/{id}", authMiddleware(http.HandlerFunc(handler.GetInfo)))
 	mux.Handle("POST /game/{id}", authMiddleware(http.HandlerFunc(handler.UpdateGame)))
 	mux.Handle("POST /game/{id}/join", authMiddleware(http.HandlerFunc(handler.JoinGame)))
 	return mux //Возвращает готовый маршрутизатор, который можно использовать в HTTP-сервере
