@@ -44,12 +44,6 @@ func (gs *GameService) MakeMove(ctx context.Context, gameID, playerID uuid.UUID,
 	}
 	// Определяем, кто должен ходить
 	currentPlayerSymbol := gs.GetCurrentPlayer(game.CurrentField) //x или y
-	// Находим игрока с таким символом и проверяем, что ходит именно он
-	// for _, p := range game.Players {
-	// 	if p.PlayerID != playerID || p.Symbol != currentPlayerSymbol {
-	// 		return errors.New("not your turn")
-	// 	}
-	// }
 	playerFound := false
 	for _, p := range game.Players {
 		if p.PlayerID == playerID {
@@ -112,3 +106,4 @@ func (gs *GameService) GetBestMove(ctx context.Context, gameID uuid.UUID) (int, 
 func (gs *GameService) GetCurrentPlayer(field *domain.GameField) int {
 	return gs.appService.GetCurrentPlayer(field)
 }
+

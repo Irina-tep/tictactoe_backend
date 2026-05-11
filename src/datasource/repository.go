@@ -137,6 +137,8 @@ func (s *GameStorage) rowToDomain(row *GameData) (*domain.CurrentGame, error) {
 		GameState:    row.GameState,
 		Players:      players,
 		GameType:     row.GameType,
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
 	}
 	return game, nil
 }

@@ -32,7 +32,7 @@
 
 -- -- Индекс для быстрого поиска по логину
 -- -- CREATE INDEX IF NOT EXISTS idx_player_login ON player(login);
--- -- DELETE FROM games;
--- -- DELETE FROM player;
+DELETE FROM games;
+DELETE FROM player;
 
-Select * FROM player;
+-- Select * FROM player;

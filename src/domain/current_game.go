@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -10,6 +12,8 @@ type CurrentGame struct {
 	GameState    string     // состояния для текущей игры
 	GameType string
 	Players      [2]Players //id, Symbol обоих игроков
+	CreatedAt time.Time  //необязательное поле
+	UpdatedAt time.Time //необязательное поле
 }
 
 type Players struct {

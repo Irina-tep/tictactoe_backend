@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,6 +13,8 @@ type User struct {
 	Login    string
 	Password string
 	Symbol   int
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func NewUser(login, password string) (User, error) {

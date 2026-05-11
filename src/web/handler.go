@@ -196,6 +196,7 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 	userID, success := GetUserIDFromContext(ctx)
 	if !success {
 		http.Error(w, "user ID is required", http.StatusBadRequest)
+		return
 	}
 
 	id, err := uuid.Parse(gameID)
@@ -248,77 +249,43 @@ func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 		h.sendError(w, "Not your turn", http.StatusForbidden)
 		return
 	}
-	// Обновляем поле в текущей игре
-	currentGame.CurrentField.Field = req.Field
-	// Проверяем статус после хода
-	if currentGame.CurrentField.IsFinished() {
-		result := currentGame.CurrentField.CheckResult()
-		switch result {
-		case domain.ResultDraw:
-			currentGame.GameState = domain.Draw
-		case domain.ResultWinX:
-			for _, p := range currentGame.Players {
-				if p.Symbol == domain.PlayerX {
-					currentGame.GameState = domain.UUIDWins + p.PlayerID.String()
-					break
-				}
-			}
-		case domain.ResultWinO:
-			for _, p := range currentGame.Players {
-				if p.Symbol == domain.PlayerO {
-					currentGame.GameState = domain.UUIDWins + p.PlayerID.String()
-					break
-				}
-			}
-		}
-	} else {
-		// Переключаем ход на другого игрока
-		for _, p := range currentGame.Players {
-			if p.PlayerID != userID {
-				currentGame.GameState = domain.PlayerToMove + p.PlayerID.String()
-				break
-			}
-		}
-	}
-	// Сохраняем
-	err = h.gameService.Repo.Save(currentGame)
+	
+	err = h.gameService.MakeMove(ctx, id, userID, changedRow, changedCol)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
 		return
 	}
-	if currentGame.GameType == "pvc" && !currentGame.CurrentField.IsFinished() {
+
+	if currentGame.GameType == "pvc" {
 		//для игры с компьютером
-		row, col, err := h.gameService.GetBestMove(ctx, id)
+		// Загружаем игру снова, чтобы проверить, не закончилась ли она после хода пользователя
+		updatedGame, err := h.gameService.Repo.GetByID(ctx, id)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to compute computer move: %v", err), http.StatusInternalServerError)
+			http.Error(w, "Failed to load game", http.StatusInternalServerError)
 			return
 		}
+		if !updatedGame.CurrentField.IsFinished() {
+			row, col, err := h.gameService.GetBestMove(ctx, id)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to compute computer move: %v", err), http.StatusInternalServerError)
+				return
+			}
 
-		err = h.gameService.MakeMove(ctx, id, uuid.Nil, row, col)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
-			return
+			err = h.gameService.MakeMove(ctx, id, uuid.Nil, row, col)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Failed to make computer move: %v", err), http.StatusInternalServerError)
+				return
+			}
 		}
-
 	}
 	// Возвращаем обновлённую игру
-	updatedGame, err := h.gameService.Repo.GetByID(ctx, id)
+	resultGame, err := h.gameService.Repo.GetByID(ctx, id)
 	if err != nil {
 		http.Error(w, "Failed to load game", http.StatusInternalServerError)
 		return
 	}
-	// if updatedGame.CurrentField.IsFinished() {
-	// 	http.Error(w, "Game is already finished", http.StatusConflict)
-	// 	return
-	// }
 
-	err = h.gameService.Repo.Save(updatedGame)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to save game: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	response := h.gameToResponse(updatedGame)
+	response := h.gameToResponse(resultGame)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -531,6 +498,8 @@ func (h *GameHandler) GetGames(w http.ResponseWriter, r *http.Request) {
 			GameState: v.GameState,
 			GameType:  v.GameType,
 			Players:   players,
+			CreatedAt: v.CreatedAt,
+			UpdatedAt: v.UpdatedAt,
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -567,9 +536,9 @@ func (h *GameHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := &UserInfoResponse{
-		UserID:     user.UserD.ID.String(),
-		Login:      user.UserD.Login,
-		Password:   user.UserD.Password,
+		UserID:     user.ID.String(),
+		Login:      user.Login,
+		Password:   user.Password,
 		Created_at: user.CreatedAt,
 		Updated_at: user.UpdatedAt,
 	}

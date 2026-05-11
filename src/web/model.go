@@ -70,10 +70,7 @@ type ErrorResponse struct {
 	Error string `json:"error"`
 	Code  int    `json:"code"`
 }
-//запрос на информацию по ID
-type UserInfoRequest struct {
-	UserID string `json:"user_id"`
-}
+
 
 //ответ с информацией об игроке
 type UserInfoResponse struct {
