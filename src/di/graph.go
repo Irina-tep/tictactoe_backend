@@ -19,7 +19,7 @@ import (
 )
 
 // создает экземпляр хранилища (синглтон).
-func NewStorage(lc fx.Lifecycle) *datasource.Storage {
+func NewStorage(lc fx.Lifecycle) *datasource.GameStorage {
 	ctx := context.Background()
 
 	// Строка подключения к PostgreSQL
@@ -69,8 +69,8 @@ func NewStorage(lc fx.Lifecycle) *datasource.Storage {
 }
 
 // создает репозиторий для работы с играми. Принимает хранилище, возвращает интерфейс GameRepository.
-func NewGameRepo(storage *datasource.Storage) datasource.GameRepository {
-	return datasource.NewGameRepositoryStruct(storage)
+func NewGameRepo(storage *datasource.GameStorage) datasource.GameRepository {
+	return storage
 }
 
 // создает сервис для работы с играми.
@@ -79,8 +79,8 @@ func NewGameService(repo datasource.GameRepository) *datasource.GameService {
 }
 
 // создает репозиторий для работы с пользователями. Принимает хранилище, возвращает интерфейс A.
-func NewUserRepo(storage *datasource.Storage) datasource.UserRepository {
-	return datasource.NewUserRepositoryStruct(storage)
+func NewUserRepo(storage *datasource.GameStorage) datasource.UserRepository {
+	return datasource.NewUserStorage(storage)
 }
 
 // создает сервис для работы с пользователями.
@@ -115,10 +115,10 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 				fmt.Println("  POST   /auth/login    - авторизация пользователя (без авторизации)")
 				fmt.Println("  POST   /game          - создать новую игру (требуется авторизация)")
 				fmt.Println("  GET    /game/{id}     - получить состояние игры (требуется авторизация)")
-				fmt.Println("  GET    /games     - получить состояние игры")
-				fmt.Println("  GET    /info     - получить состояние игры")
+				fmt.Println("  GET    /games     - получить список текущих игр")
+				fmt.Println("  GET    /info/{id}   - получить информацию об игроке по id")
 				fmt.Println("  POST   /game/{id}     - сделать ход (требуется авторизация)")
-				fmt.Println("  POST   /game/{id}/join - прсоединиться к игре")
+				fmt.Println("  POST   /game/{id}/join - присоединиться к игре")
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					log.Printf("Ошибка сервера: %v\n", err)
 				}

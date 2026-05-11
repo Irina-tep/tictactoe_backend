@@ -226,63 +226,72 @@ kill -9 27417
 # 1. Регистрация пользователя
 curl -X POST http://localhost:8080/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"login": "it", "password": "123456"}'
+  -d '{"login": "irina", "password": "123456"}'
 
 # 2. Аутентификация (получение токена)
 curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'it:123456' | base64)"
+  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)"
 
 # 3. Создание игры
 curl -X POST http://localhost:8080/game \
-  -H "Authorization: Basic YWxpY2U6MTIzNDU2" \
+  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"game_type": "pve"}'
+  -d '{"game_type": "pvc"}'
 
 # 4. Ход игрока
 curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic YWxpY2U6MTIzNDU2" \
+  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)" \
   -H "Content-Type: application/json" \
-  -d '{"row": 1, "col": 1, "field": [[0,0,0],[0,1,0],[0,0,0]]}'
+  -d '{"field": [[0,0,0],[0,1,0],[0,0,0]]}'
 
 ## Игра с двумя игроками
 # 1. Регистрация игрока А
 curl -X POST http://localhost:8080/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"login": "it", "password": "123456"}'
+  -d '{"login": "irinaA", "password": "123456"}'
 
 # 2. Регистрация игрока Б
 curl -X POST http://localhost:8080/auth/signup \
   -H "Content-Type: application/json" \
-  -d '{"login": "an", "password": "123456"}'
+  -d '{"login": "irinaB", "password": "123456"}'
 
-# 3. Аутентификация Алисы
+# 3. Аутентификация А
 curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'it:123456' | base64)"
-# → token_alice = "Basic YWxpY2U6MTIzNDU2"
+  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)"
 
-# 4. Аутентификация Боба
+# 4. Аутентификация Б
 curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'an:123456' | base64)"
+  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)"
 
-# 5. Алиса создаёт игру PvP
+# 5. А создаёт игру PvP
 curl -X POST http://localhost:8080/game \
-  -H "Authorization: Basic $(echo -n 'it:123456' | base64)" \
+  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"game_type": "pvp"}'
 # → id = "xxx"
 
-# 6. Боб присоединяется
+# 6. Б присоединяется
 curl -X POST http://localhost:8080/game/5c2e9934-cd1c-46ef-bac2-57a09d2a29aa/join \
-  -H "Authorization: Basic $(echo -n 'an:123456' | base64)"
+  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)"
 
-# 7. Алиса ходит
+# 7. А ходит
 curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic $(echo -n 'it:123456' | base64)" \
+  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"field": [[0,0,0],[0,1,0],[0,0,0]]}'
+# → id = "xxx"
 
-# 8. Боб ходит
+# 8. Б ходит
 curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic $(echo -n 'an:123456' | base64)" \
+  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"field": [[2,0,0],[0,1,0],[0,0,0]]}'
+
+
+# Список текущих игр 
+curl -X GET http://localhost:8080/games \
+  -H "Authorization: Basic $(echo -n 'kisa:123456' | base64)"
+
+# Поиск игрока по ID
+curl -X GET http://localhost:8080/info/5c2e9934-cd1c-46ef-bac2-57a09d2a29aa \
+  -H "Authorization: Basic $(echo -n 'kisa:123456' | base64)"

@@ -35,4 +35,4 @@
 -- -- DELETE FROM games;
 -- -- DELETE FROM player;
 
-Select * FROM games;
+Select * FROM player;
