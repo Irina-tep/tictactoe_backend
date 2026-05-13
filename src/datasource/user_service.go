@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Создай сервис авторизации, который использует UserService
 // UserServiceImpl - реализация UserService
 type AuthorizationService struct {
 	UserRepo UserRepository

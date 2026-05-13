@@ -2,7 +2,6 @@ package domain
 
 import "errors"
 
-// значки, которыми будут ходить пользователи
 const (
 	Empty   = 0
 	PlayerX = 1

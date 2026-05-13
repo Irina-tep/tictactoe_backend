@@ -1,6 +1,6 @@
 package web
 
-// Приложение должно поддерживать одновременную игру в несколько игр .
+
 import (
 	"context"
 	"datasource"
@@ -18,24 +18,19 @@ type contextKey string
 
 const userIDKey contextKey = "userID"
 
-// обработчик с использованием net/http, используя следующий метод:
-// POST /game/{current_game_UUID} — отправляет текущую игру с обновленным игровым полем пользователя и возвращает текущую игру с обновленным игровым полем компьютера.
-
 type GameHandler struct {
 	gameService *datasource.GameService
 	userService *datasource.AuthorizationService
 }
 
-// Если отправлена ​​некорректная игра с неправильно обновленной доской, необходимо вернуть сообщение об ошибке с описанием .
-// отправляет ошибку в формате JSON.
 func (h *GameHandler) sendError(w http.ResponseWriter, message string, code int) {
-	w.Header().Set("Content-Type", "application/json") //Устанавливает заголовок Content-Type: application/json, Браузер видит Content-Type и знает, что это JSON, это предотвращает неправильную обработку браузером
-	w.WriteHeader(code)                                //Устанавливает HTTP статус-код ответа
+	w.Header().Set("Content-Type", "application/json") 
+	w.WriteHeader(code)                                
 	errResp := ErrorResponse{
 		Error: message,
 		Code:  code,
 	}
-	json.NewEncoder(w).Encode(errResp) //Кодирует структуру в JSON и сразу записывает в w
+	json.NewEncoder(w).Encode(errResp) 
 }
 
 // UserAuthenticator создает middleware, который проверяет авторизацию пользователя.
@@ -55,19 +50,18 @@ func (h *GameHandler) UserAuthenticator(next http.Handler) http.Handler {
 			return
 		}
 
-		// Добавляем UserID в контекст запроса
 		ctx := context.WithValue(r.Context(), userIDKey, userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// GetUserIDFromContext извлекает UserID из контекста запроса.
+
 func GetUserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	userID, ok := ctx.Value(userIDKey).(uuid.UUID)
 	return userID, ok
 }
 
-// создает новую игру. POST /game
+
 func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -102,13 +96,12 @@ func (h *GameHandler) CreateGame(w http.ResponseWriter, r *http.Request) {
 		GameType: req.GameType,
 	}
 
-	//Отправка JSON ответа
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)   //станавливает статус 201 Created
-	json.NewEncoder(w).Encode(response) //Кодирует response в JSON и отправляет клиенту
+	w.WriteHeader(http.StatusCreated)   
+	json.NewEncoder(w).Encode(response) 
 }
 
-// возвращает состояние игры.GET /game/{id}
+
 func (h *GameHandler) GetGame(w http.ResponseWriter, r *http.Request) {
 	gameID := r.PathValue("id")
 	if gameID == "" {
@@ -132,7 +125,7 @@ func (h *GameHandler) GetGame(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// gameToResponse преобразует CurrentGame в GameResponse с заполнением всех полей.
+
 func (h *GameHandler) gameToResponse(game *domain.CurrentGame) *GameResponse {
 	if game == nil {
 		return nil
@@ -172,7 +165,7 @@ func (h *GameHandler) gameToResponse(game *domain.CurrentGame) *GameResponse {
 
 }
 
-// обрабатывает ход пользователя и выполняет ответный ход компьютера. POST /game/{id}
+
 func (h *GameHandler) UpdateGame(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -313,7 +306,7 @@ func (h *GameHandler) compareFieldsDetailed(field1, field2 [3][3]int) (int, int,
 	return diffCount, firstRow, firstCol, firstOldVal, firstNewVal
 }
 
-// Обработчик регистрации пользователя
+
 func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -330,15 +323,15 @@ func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	req.Password = strings.TrimSpace(req.Password)
 
 	if req.Login == "" || req.Password == "" {
-		h.sendError(w, "Login and password are required", http.StatusUnauthorized)
+		h.sendError(w, "Login and password are required", http.StatusBadRequest)
 		return
 	}
 
-	// Вызываем сервис регистрации
+	
 	success, err := h.userService.Registration(req.Login, req.Password)
 	if err != nil {
 		status := http.StatusInternalServerError
-		// Если ошибка валидации — возвращаем 401
+		
 		if strings.Contains(err.Error(), "login") || strings.Contains(err.Error(), "password") {
 			status = http.StatusUnauthorized
 		}
@@ -354,19 +347,19 @@ func (h *GameHandler) SignUp(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Обработчик аутентификации
+
 func (h *GameHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	// получить значение заголовка с именем Authorization
+	
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		h.sendError(w, "Authorization header is required", http.StatusUnauthorized)
 		return
 	}
-	// Аутентифицируем пользователя
+	
 	userID, err := h.userService.Authenticate(authHeader)
 	if err != nil {
 		h.sendError(w, "Authentication failed: "+err.Error(), http.StatusUnauthorized)
@@ -383,7 +376,7 @@ func (h *GameHandler) Authenticate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// Метод для присоединения к игре
+
 func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -462,7 +455,6 @@ func (h *GameHandler) JoinGame(w http.ResponseWriter, r *http.Request) {
 	h.sendError(w, "Game is full", http.StatusConflict)
 }
 
-// для получения доступных текущих игр
 func (h *GameHandler) GetGames(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -506,7 +498,7 @@ func (h *GameHandler) GetGames(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-// для получения доступных текущих игр
+
 func (h *GameHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		h.sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -538,7 +530,7 @@ func (h *GameHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	response := &UserInfoResponse{
 		UserID:     user.ID.String(),
 		Login:      user.Login,
-		Password:   user.Password,
+		// Password:   user.Password,
 		Created_at: user.CreatedAt,
 		Updated_at: user.UpdatedAt,
 	}

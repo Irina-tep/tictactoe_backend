@@ -20,7 +20,7 @@ type GameRepository interface {
 }
 
 type GameStorage struct {
-	db *pgxpool.Pool /// Пул соединений (потокобезопасный)
+	db *pgxpool.Pool 
 }
 
 // Конструктор с подключением к БД

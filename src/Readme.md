@@ -271,7 +271,7 @@ curl -X POST http://localhost:8080/game \
 # → id = "xxx"
 
 # 6. Б присоединяется
-curl -X POST http://localhost:8080/game/5c2e9934-cd1c-46ef-bac2-57a09d2a29aa/join \
+curl -X POST http://localhost:8080/game/xxx/join \
   -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)"
 
 # 7. А ходит

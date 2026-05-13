@@ -17,16 +17,10 @@ type GameData struct {
 	UpdatedAt time.Time      `db:"updated_at"`
 }
 
-// type PlayersData struct {
-// 	PlayerID uuid.UUID
-// 	Symbol   int
-// }
-
 type UserData struct {
 	ID       uuid.UUID `db:"id"`
 	Login    string `db:"login"`
 	Password string `db:"password"`
-	// Symbol   int `db:"symbol"`
 	CreatedAt time.Time  `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }

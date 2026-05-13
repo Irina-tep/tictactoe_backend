@@ -78,7 +78,7 @@ func NewGameService(repo datasource.GameRepository) *datasource.GameService {
 	return datasource.NewGameService(repo)
 }
 
-// создает репозиторий для работы с пользователями. Принимает хранилище, возвращает интерфейс A.
+// создает репозиторий для работы с пользователями. Принимает хранилище, возвращает интерфейс.
 func NewUserRepo(storage *datasource.GameStorage) datasource.UserRepository {
 	return datasource.NewUserStorage(storage)
 }
@@ -115,10 +115,10 @@ func NewHTTPServer(lc fx.Lifecycle, handler http.Handler) *http.Server {
 				fmt.Println("  POST   /auth/login    - авторизация пользователя (без авторизации)")
 				fmt.Println("  POST   /game          - создать новую игру (требуется авторизация)")
 				fmt.Println("  GET    /game/{id}     - получить состояние игры (требуется авторизация)")
-				fmt.Println("  GET    /games     - получить список текущих игр")
-				fmt.Println("  GET    /info/{id}   - получить информацию об игроке по id")
+				fmt.Println("  GET    /games     - получить список текущих игр (требуется авторизация)")
+				fmt.Println("  GET    /info/{id}   - получить информацию об игроке по id (требуется авторизация)")
 				fmt.Println("  POST   /game/{id}     - сделать ход (требуется авторизация)")
-				fmt.Println("  POST   /game/{id}/join - присоединиться к игре")
+				fmt.Println("  POST   /game/{id}/join - присоединиться к игре (требуется авторизация)")
 				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					log.Printf("Ошибка сервера: %v\n", err)
 				}

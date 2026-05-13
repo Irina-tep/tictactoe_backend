@@ -9,12 +9,12 @@ import (
 )
 
 type User struct {
-	ID       uuid.UUID
-	Login    string
-	Password string
-	Symbol   int
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        uuid.UUID 
+	Login     string    
+	Password  string    
+	Symbol    int
+	CreatedAt time.Time 
+	UpdatedAt time.Time 
 }
 
 func NewUser(login, password string) (User, error) {

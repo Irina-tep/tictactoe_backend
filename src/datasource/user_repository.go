@@ -12,19 +12,13 @@ import (
 // UserRepository - интерфейс репозитория для работы с пользователями
 type UserRepository interface {
 	Save(ctx context.Context, u *domain.User) error
-	GetByID(ctx context.Context, userID uuid.UUID) (*UserData, error)
+	GetByID(ctx context.Context, userID uuid.UUID) (*domain.User, error)
 	GetByLogin(ctx context.Context, login string) (*domain.User, error)
 }
 
 type UserStorage struct {
 	strorage *GameStorage
 }
-
-// type UserData struct {
-// 	UserD     *domain.User
-// 	// CreatedAt time.Time
-// 	// UpdatedAt time.Time
-// }
 
 func NewUserStorage(s *GameStorage) *UserStorage {
 	return &UserStorage{
@@ -51,24 +45,14 @@ func (s *UserStorage) Save(ctx context.Context, u *domain.User) error {
 
 }
 
-func (s *UserStorage) GetByID(ctx context.Context, userID uuid.UUID) (*UserData, error) {
-	var user UserData
-	// user.UserD = &domain.User{}
+func (s *UserStorage) GetByID(ctx context.Context, userID uuid.UUID) (*domain.User, error) {
+
 	if userID == uuid.Nil {
 		return nil, errors.New("user ID is empty")
 	}
 	if s.strorage.db == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
-	// var createdAt, updatedAt time.Time
-	// err := s.strorage.db.Query(ctx, "SELECT id, login, password, created_at, updated_at FROM player WHERE id = $1", userID)
-	// if err == pgx.ErrNoRows {
-	// 	return nil, errors.New("user not found")
-	// }
-
-	// if err != nil {
-	// 	return nil, errors.New("failed to get user")
-	// }
 
 	row, err := s.strorage.db.Query(ctx, "SELECT id, login, password, created_at, updated_at FROM player WHERE id = $1", userID)
 	if err != nil {
@@ -76,9 +60,16 @@ func (s *UserStorage) GetByID(ctx context.Context, userID uuid.UUID) (*UserData,
 	}
 
 	defer row.Close()
-	user, err = pgx.CollectOneRow(row, pgx.RowToStructByName[UserData])
+	userData, err := pgx.CollectOneRow(row, pgx.RowToStructByName[UserData])
 	if err != nil {
-		return nil, ErrGameIDNotFound //поменять ошибку
+		return nil, ErrUserIDNotFound
+	}
+	user := domain.User{
+		ID:        userData.ID,
+		Login:     userData.Login,
+		Password:  userData.Password,
+		CreatedAt: userData.CreatedAt,
+		UpdatedAt: userData.UpdatedAt,
 	}
 
 	return &user, nil
@@ -89,6 +80,7 @@ func (s *UserStorage) GetByLogin(ctx context.Context, login string) (*domain.Use
 	if s.strorage.db == nil {
 		return nil, errors.New("database connection is not initialized")
 	}
+
 	err := s.strorage.db.QueryRow(ctx, "SELECT id, login, password, created_at, updated_at FROM player WHERE login = $1", login).Scan(&user.ID, &user.Login, &user.Password, &user.CreatedAt, &user.UpdatedAt)
 	if err == pgx.ErrNoRows {
 		return nil, errors.New("user not found")

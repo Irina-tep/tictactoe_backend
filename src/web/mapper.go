@@ -35,7 +35,7 @@ func ToDomainFromRequest(gameID string, req *GameRequest) (*domain.CurrentGame, 
 	return &game, nil
 }
 
-// создает новую игру c user из CreateGameRequest.
+// создает новую игру c user из CreateGameRequest
 func NewGameWithPlayer(userID uuid.UUID, gameType string) *domain.CurrentGame {
 	field := domain.GameField{
 		Field: [3][3]int{},
