@@ -282,13 +282,6 @@ return PlayerO
 | created_at | TIMESTAMP | Дата создания |
 | updated_at | TIMESTAMP | Дата обновления |
 
-## 🧪 Тестирование
-
-```bash
-cd src/api
-go test -v
-```
-
 ## Убить процесс
 ```bash
 sudo lsof -i :8080
