@@ -1,150 +1,158 @@
 # Структура проекта "Крестики-Нолики" (Tic-Tac-Toe)
 
-Проект реализует игру "Крестики-Нолики" с REST API и алгоритмом минимакса для AI игрока. Архитектура следует принципам чистой архитектуры (Clean Architecture) с разделением на слои.
+Проект реализует игру "Крестики-Нолики" с REST API, поддержкой двух режимов (PvP и PvC), алгоритмом минимакса для AI игрока и аутентификацией пользователей. Данные хранятся в PostgreSQL.
 
 ## 📁 Общая структура
 
 ```
 src/
-├── api/                    # Слой контрактов API (HTTP handlers, DTOs, routing)
-├── application/           # Бизнес-логика (доменный слой)
-├── infrastructure/        # Инфраструктурный слой (хранилище, репозитории, маппинг)
-├── di/                   # Слой внедрения зависимостей (Dependency Injection)
-├── go.work              # Go workspace файл
-└── go.work.sum          # Go workspace checksum
+├── web/                    # Слой HTTP (handlers, DTO, routing, middleware)
+├── domain/                 # Бизнес-логика (доменные модели, минимакс)
+├── datasource/             # Слой данных (PostgreSQL, репозитории, сервисы)
+├── di/                     # Внедрение зависимостей (uber/fx)
+├── datasource/database/    # SQL-скрипты
+├── go.work                 # Go workspace файл
+└── go.work.sum             # Go workspace checksum
 ```
 
 ## 🏗️ Детальное описание модулей
 
-### 1. **api/** - Слой контрактов API
-Обработка HTTP запросов, валидация, преобразование данных.
+### 1. **web/** — Слой HTTP (API)
+Обработка HTTP запросов, валидация, аутентификация, преобразование данных.
 
 | Файл | Назначение |
 |------|------------|
-| `router.go` | Маршрутизация HTTP запросов |
-| `handler.go` | Обработчики HTTP запросов (CreateGame, GetGame, UpdateGame) |
-| `dto.go` | Data Transfer Objects (DTO) для запросов/ответов |
+| `router.go` | Маршрутизация HTTP запросов и middleware аутентификации |
+| `handler.go` | Обработчики HTTP запросов (SignUp, Authenticate, CreateGame, GetGame, UpdateGame, JoinGame, GetGames, GetInfo) |
+| `model.go` | Data Transfer Objects (DTO) для запросов/ответов |
 | `mapper.go` | Преобразование между DTO и доменными моделями |
 | `errors.go` | Ошибки уровня API |
-| `handler_test.go` | Тесты API handlers |
 
 **Эндпоинты:**
-- `POST /game` - создать новую игру
-- `GET /game/{id}` - получить состояние игры
-- `POST /game/{id}` - сделать ход и получить ответ компьютера
 
-### 2. **application/** - Бизнес-логика
-Доменные модели и сервисы, реализующие игровую логику.
+| Метод | Путь | Описание | Аутентификация |
+|-------|------|----------|:--------------:|
+| POST | `/auth/signup` | Регистрация пользователя | ❌ |
+| POST | `/auth/login` | Авторизация (Basic Auth) | ❌ |
+| POST | `/game` | Создать новую игру | ✅ |
+| GET | `/game/{id}` | Получить состояние игры | ✅ |
+| POST | `/game/{id}` | Сделать ход | ✅ |
+| POST | `/game/{id}/join` | Присоединиться к PvP-игре | ✅ |
+| GET | `/games` | Список активных игр | ✅ |
+| GET | `/info/{id}` | Информация об игроке | ✅ |
+
+### 2. **domain/** — Бизнес-логика (доменный слой)
+Доменные модели и сервисы, реализующие игровую логику и алгоритм минимакса.
 
 | Файл | Назначение |
 |------|------------|
-| `constants.go` | Константы игры (игроки, состояния, ошибки) |
-| `current_game.go` | Модель текущей игры с UUID |
-| `game_board.go` | Модель игрового поля с логикой проверок |
-| `service_interface.go` | Интерфейс сервиса игры |
-| `service_impl.go` | Реализация сервиса с алгоритмом минимакса |
+| `constants.go` | Константы игры (игроки, состояния, типы игр, ошибки) |
+| `current_game.go` | Модель текущей игры с UUID, игроками и состоянием |
+| `game_board.go` | Модель игрового поля 3×3 с логикой проверок и минимаксом |
+| `user.go` | Модель пользователя с валидацией логина/пароля |
+| `service_interface.go` | Интерфейсы сервисов (игра, пользователи) |
+| `service_implementation.go` | Реализация сервиса с алгоритмом минимакса |
 
 **Ключевые компоненты:**
-- `CurrentGame` - доменная модель игры с UUID
-- `GameFild` - игровое поле 3×3 с методами проверки состояния
-- `Service` - реализация алгоритма минимакса для AI
+- `CurrentGame` — доменная модель игры с UUID, полем, игроками, состоянием и типом
+- `GameField` — игровое поле 3×3 с методами `MakeMove`, `CheckResult`, `IsFinished`, `Evaluate`
+- `User` — модель пользователя с валидацией
+- `GameServiceInterface` — реализация алгоритма минимакса и определения текущего игрока
 
-### 3. **infrastructure/** - Инфраструктурный слой
-Реализация персистентности и доступа к данным.
+### 3. **datasource/** — Слой данных (инфраструктура)
+Реализация персистентности в PostgreSQL, репозитории и сервисы доступа к данным.
 
 | Файл | Назначение |
 |------|------------|
-| `save_data.go` | Потокобезопасное хранилище в памяти (sync.Map) |
-| `repository_interface.go` | Интерфейс и реализация репозитория |
-| `mapper.go` | Маппинг между доменом и хранилищем |
-| `service.go` | Сервис инфраструктуры (координация репозитория и домена) |
+| `model.go` | Структуры данных для хранения (GameData, UserData) |
+| `repository.go` | Реализация GameRepository (сохранение/загрузка игр через pgxpool) |
+| `user_repository.go` | Реализация UserRepository (сохранение/загрузка пользователей) |
+| `service.go` | Сервис координации (GameService) — бизнес-логика ходов, проверки |
+| `user_service.go` | Сервис аутентификации (AuthorizationService) — регистрация, Basic Auth |
+| `errors.go` | Ошибки уровня данных |
+| `database/game.sql` | SQL-скрипты для создания таблиц и отладки |
 
 **Ключевые компоненты:**
-- `Storage` - потокобезопасное хранилище игр
-- `GameRepository` - интерфейс репозитория
-- `GameService` - сервис инфраструктуры
+- `GameStorage` — пул соединений PostgreSQL (pgxpool), реализует `GameRepository`
+- `UserStorage` — обёртка над GameStorage для работы с пользователями, реализует `UserRepository`
+- `GameService` — сервис, координирующий репозиторий и доменную логику (ходы, проверки, минимакс)
+- `AuthorizationService` — сервис регистрации и аутентификации через Basic Auth
 
-### 4. **di/** - Внедрение зависимостей
-Настройка и инициализация компонентов приложения.
+### 4. **di/** — Внедрение зависимостей
+Настройка и инициализация компонентов приложения с помощью uber/fx.
 
 | Файл | Назначение |
 |------|------------|
-| `main.go` | Граф зависимостей с использованием uber/fx |
+| `graph.go` | Граф зависимостей: создание Storage, репозиториев, сервисов, HTTP-сервера |
+| `main.go` | Точка входа, запуск fx-приложения |
 
 ## 🔄 Поток данных (Data Flow)
 
 ```
-HTTP Request → API Layer → Infrastructure Service → Application Service → Repository → Storage
+HTTP Request → web (handler) → datasource (GameService) → domain (минимакс) → datasource (GameRepository) → PostgreSQL
 ```
 
-1. **Клиент** отправляет HTTP запрос
-2. **API Layer** валидирует и преобразует в доменные модели
-3. **Infrastructure Service** координирует работу с данными
-4. **Application Service** выполняет бизнес-логику (минимакс)
-5. **Repository** обеспечивает доступ к данным
-6. **Storage** хранит состояние в памяти
+1. **Клиент** отправляет HTTP запрос (с Basic Auth для защищённых эндпоинтов)
+2. **web/handler** проверяет аутентификацию через middleware, валидирует запрос
+3. **datasource/GameService** загружает игру из БД, вызывает доменную логику
+4. **domain** выполняет бизнес-логику (минимакс, проверка поля, определение хода)
+5. **datasource/GameRepository** сохраняет обновлённое состояние в PostgreSQL
 
 ## 🧩 Зависимости между модулями
 
 ```
-di → api → infrastructure → application
-      ↑          ↑
-      └──────────┘ (косвенная через интерфейсы)
+di → web → datasource → domain
 ```
 
-- **di** зависит от всех модулей (собирает граф зависимостей)
-- **api** зависит от **infrastructure** (использует GameService)
-- **infrastructure** зависит от **application** (использует доменные модели)
-- **application** не зависит от других модулей (чистая бизнес-логика)
+- **di** зависит от всех модулей (собирает граф зависимостей через uber/fx)
+- **web** зависит от **datasource** (использует GameService и AuthorizationService)
+- **datasource** зависит от **domain** (использует доменные модели и интерфейсы)
+- **domain** не зависит от других модулей (чистая бизнес-логика)
 
 ## 🎯 Ключевые архитектурные принципы
 
 ### 1. **Инверсия зависимостей (DIP)**
-- Интерфейсы определены в том же пакете, где используются
+- Интерфейсы (`GameRepository`, `UserRepository`) определены в **datasource**
 - Реализации зависят от интерфейсов, а не наоборот
 
 ### 2. **Разделение ответственности**
-- **API Layer**: HTTP обработка, валидация, преобразование данных
-- **Application Layer**: бизнес-правила, алгоритм минимакса
-- **Infrastructure Layer**: персистентность, внешние зависимости
-- **DI Layer**: композиция компонентов
+- **web**: HTTP обработка, валидация, аутентификация, DTO
+- **domain**: бизнес-правила, алгоритм минимакса, модели
+- **datasource**: персистентность (PostgreSQL), репозитории, сервисы координации
+- **di**: композиция компонентов, жизненный цикл приложения
 
-### 3. **Тестируемость**
-- Слои изолированы через интерфейсы
-- Возможность мокирования зависимостей
-- Интеграционные тесты для API
+### 3. **Два режима игры**
+- **PvC** (Player vs Computer) — игрок против AI (минимакс)
+- **PvP** (Player vs Player) — два игрока через join
 
-### 4. **Потокобезопасность**
-- Хранилище использует `sync.Map`
-- Каждая игра имеет уникальный UUID
-- Независимые игровые сессии
+### 4. **Аутентификация**
+- Basic Auth (base64(login:password))
+- Middleware проверяет авторизацию для защищённых эндпоинтов
+- UserID передаётся через контекст запроса
 
 ## 🔧 Технологии и инструменты
 
-- **Go 1.25.5** - основной язык разработки
-- **uber/fx** - фреймворк для внедрения зависимостей
-- **google/uuid** - генерация уникальных идентификаторов
-- **Go Workspace** - управление мультимодульным проектом
-- **net/http** - HTTP сервер и роутинг
-
-## 🧪 Тестирование
-
-Проект включает тесты API:
-- Создание игры
-- Получение состояния игры
-- Последовательные ходы
-- Обработка ошибок
-- Конкурентные игры
-
-**Запуск тестов:**
-```bash
-cd src/api
-go test -v
-```
+- **Go 1.25.5** — основной язык разработки
+- **uber/fx** — фреймворк для внедрения зависимостей
+- **google/uuid** — генерация уникальных идентификаторов
+- **jackc/pgx/v5** — драйвер PostgreSQL и пул соединений (pgxpool)
+- **Go Workspace** — управление мультимодульным проектом
+- **net/http** — HTTP сервер и роутинг (Go 1.22+ PathValue)
 
 ## 🚀 Запуск проекта
 
-### Через DI слой (рекомендуется)
+### Требования
+- Go 1.25.5+
+- PostgreSQL (например, через Docker)
+
+### Настройка БД
+```bash
+# Создание пользователя и базы данных (пример)
+psql -U postgres -c "CREATE USER tictacuser WITH PASSWORD 'password';"
+psql -U postgres -c "CREATE DATABASE tictactoe OWNER tictacuser;"
+```
+
+### Запуск через DI слой (рекомендуется)
 ```bash
 cd src/di
 go run main.go
@@ -152,52 +160,89 @@ go run main.go
 
 Сервер запускается на `http://localhost:8080`
 
+Таблицы `games` и `player` создаются автоматически при запуске.
+
 ## 📊 Примеры использования API
 
 ### 1. Регистрация пользователя
-Bash
-Run
+```bash
 curl -X POST http://localhost:8080/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"login": "player1", "password": "pass123"}'
+```
+
 ### 2. Авторизация (получение токена)
-Bash
-Run
+```bash
 curl -X POST http://localhost:8080/auth/login \
   -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
-В ответ получите user_id и token.
+```
+В ответ получите `user_id` и `token`.
 
-### 3. Создание новой игры (с авторизацией)
-Bash
-Run
+### 3. Создание новой игры (PvC — с компьютером)
+```bash
 curl -X POST http://localhost:8080/game \
-  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
-В ответ получите id игры и пустое поле.
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"game_type": "pvc"}'
+```
 
-### 4. Выполнить ход (POST /game/{id})
-Нужно отправить поле с одним изменением — поставить 1 (крестик, игрок X) в пустую клетку. Сервер сам сделает ответный ход (нолик, 2).
+### 4. Создание новой игры (PvP — с другим игроком)
+```bash
+curl -X POST http://localhost:8080/game \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)" \
+  -H "Content-Type: application/json" \
+  -d '{"game_type": "pvp"}'
+```
 
-Bash
-Run
+### 5. Выполнить ход (POST /game/{id})
+Нужно отправить поле с одним изменением — поставить 1 (крестик, игрок X) в пустую клетку. Для PvC сервер сам сделает ответный ход (нолик, 2).
+
+```bash
 curl -X POST http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
   -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)" \
   -H "Content-Type: application/json" \
   -d '{"field": [[1,0,0],[0,0,0],[0,0,0]]}'
+```
 
-### 5. Получить состояние игры
-Bash
-Run
+### 6. Получить состояние игры
+```bash
 curl -X GET http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
   -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
+```
 
+### 7. Присоединиться к PvP-игре
+```bash
+curl -X POST http://localhost:8080/game/ВАШ_UUID_ИГРЫ/join \
+  -H "Authorization: Basic $(echo -n 'player2:pass123' | base64)"
+```
+
+### 8. Список активных игр
+```bash
+curl -X GET http://localhost:8080/games \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
+```
+
+### 9. Информация об игроке
+```bash
+curl -X GET http://localhost:8080/info/ID_ИГРОКА \
+  -H "Authorization: Basic $(echo -n 'player1:pass123' | base64)"
+```
 
 ## 🎮 Логика игры
 
 - Игровое поле: матрица 3×3
-- Значения: 0 (пусто), 1 (X), 2 (O)
+- Значения: `0` (пусто), `1` (X), `2` (O)
 - Первый ход: игрок X
 - AI использует алгоритм минимакса
 - Проверка победных комбинаций и ничьей
+
+### Состояния игры
+| Константа | Описание |
+|-----------|----------|
+| `waiting` | Ожидание второго игрока (PvP) |
+| `player_to_move{UUID}` | Ход игрока с указанным UUID |
+| `player_wins{UUID}` | Победа игрока с указанным UUID |
+| `draw` | Ничья |
 
 ## 🔍 Детали реализации алгоритма
 
@@ -205,7 +250,6 @@ curl -X GET http://localhost:8080/game/ВАШ_UUID_ИГРЫ \
 - Рекурсивный алгоритм для поиска оптимального хода
 - Оценка позиции: +10 за победу X, -10 за победу O, 0 за ничью
 - Учет глубины для приоритизации быстрых побед
-- Альфа-бета отсечение (при необходимости оптимизации)
 
 ### Определение текущего игрока
 ```go
@@ -216,82 +260,37 @@ if countX <= countO {
 return PlayerO
 ```
 
+## 🗄️ Структура БД
+
+### Таблица `games`
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| id | UUID PRIMARY KEY | Уникальный идентификатор игры |
+| field | JSONB | Игровое поле 3×3 |
+| game_state | TEXT | Состояние игры |
+| players | JSONB | Массив игроков [id, symbol] |
+| game_type | TEXT | Тип игры: "pvp" или "pvc" |
+| created_at | TIMESTAMP | Дата создания |
+| updated_at | TIMESTAMP | Дата обновления |
+
+### Таблица `player`
+| Колонка | Тип | Описание |
+|---------|-----|----------|
+| id | UUID PRIMARY KEY | Уникальный идентификатор |
+| login | VARCHAR(255) UNIQUE | Логин пользователя |
+| password | VARCHAR(255) | Пароль |
+| created_at | TIMESTAMP | Дата создания |
+| updated_at | TIMESTAMP | Дата обновления |
+
+## 🧪 Тестирование
+
+```bash
+cd src/api
+go test -v
+```
+
 ## Убить процесс
+```bash
 sudo lsof -i :8080
-
-kill -9 27417
-
-
-## Игра с компьютером
-# 1. Регистрация пользователя
-curl -X POST http://localhost:8080/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"login": "irina", "password": "123456"}'
-
-# 2. Аутентификация (получение токена)
-curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)"
-
-# 3. Создание игры
-curl -X POST http://localhost:8080/game \
-  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{"game_type": "pvc"}'
-
-# 4. Ход игрока
-curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic $(echo -n 'irina:123456' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{"field": [[0,0,0],[0,1,0],[0,0,0]]}'
-
-## Игра с двумя игроками
-# 1. Регистрация игрока А
-curl -X POST http://localhost:8080/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"login": "irinaA", "password": "123456"}'
-
-# 2. Регистрация игрока Б
-curl -X POST http://localhost:8080/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"login": "irinaB", "password": "123456"}'
-
-# 3. Аутентификация А
-curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)"
-
-# 4. Аутентификация Б
-curl -X POST http://localhost:8080/auth/login \
-  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)"
-
-# 5. А создаёт игру PvP
-curl -X POST http://localhost:8080/game \
-  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{"game_type": "pvp"}'
-# → id = "xxx"
-
-# 6. Б присоединяется
-curl -X POST http://localhost:8080/game/xxx/join \
-  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)"
-
-# 7. А ходит
-curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic $(echo -n 'irinaA:123456' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{"field": [[0,0,0],[0,1,0],[0,0,0]]}'
-# → id = "xxx"
-
-# 8. Б ходит
-curl -X POST http://localhost:8080/game/xxx \
-  -H "Authorization: Basic $(echo -n 'irinaB:123456' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{"field": [[2,0,0],[0,1,0],[0,0,0]]}'
-
-
-# Список текущих игр 
-curl -X GET http://localhost:8080/games \
-  -H "Authorization: Basic $(echo -n 'kisa:123456' | base64)"
-
-# Поиск игрока по ID
-curl -X GET http://localhost:8080/info/5c2e9934-cd1c-46ef-bac2-57a09d2a29aa \
-  -H "Authorization: Basic $(echo -n 'kisa:123456' | base64)"
+kill -9 PID
+```
